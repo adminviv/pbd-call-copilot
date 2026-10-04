@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PBD Call Copilot</title>
+<meta name="description" content="Live science suggestions during Zoom calls, for PBD Project.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #FFFFFF; --black: #1F212F; --teal: #04849E; --blue: #143575;
+    --lilac: #86A2DF; --green: #4DB3A7; --line: #DDE3EE; --soft: #F4F7FB;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--white); color: var(--black);
+         font: 400 17px/1.6 Roboto, system-ui, sans-serif; }
+  h1, h2, h3 { font-family: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", sans-serif; margin: 0; }
+  header { background: var(--blue); color: var(--white); padding: 18px 16px; }
+  header .wrap { display: flex; align-items: center; gap: 10px; font-weight: 500; letter-spacing: .02em; }
+  header .mark { width: 14px; height: 14px; background: var(--teal); }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .hero { background: var(--blue); color: var(--white); padding: 40px 16px 64px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; }
+  .hero p { max-width: 600px; color: #D6DFF2; font-size: 19px; margin: 16px 0 28px; }
+  .btn { display: inline-block; background: var(--teal); color: var(--white); text-decoration: none;
+         font-weight: 500; padding: 15px 26px; transition: background .25s ease, transform .25s ease; }
+  .btn:hover { background: #036E84; transform: translateY(-1px); }
+  .meta { display: block; margin-top: 12px; font-size: 14px; color: var(--lilac); }
+  main { padding: 48px 16px 64px; }
+  section + section { margin-top: 48px; }
+  h2 { font-size: 26px; margin-bottom: 16px; }
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 40px 1fr; gap: 14px;
+                border: 1px solid var(--line); padding: 16px; }
+  ol.steps li::before { content: counter(s); background: var(--teal); color: var(--white);
+                        font-weight: 700; display: grid; place-items: center; height: 40px; }
+  code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: 15px; background: var(--soft);
+              padding: 2px 6px; border: 1px solid var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--soft); padding: 18px; border-left: 4px solid var(--teal); }
+  .card h3 { font-size: 18px; margin-bottom: 6px; }
+  .card p { margin: 0; font-size: 15px; }
+  footer { border-top: 1px solid var(--line); padding: 24px 16px; font-size: 14px; color: #5B6072; }
+  @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+</style>
+</head>
+<body>
+<header><div class="wrap"><span class="mark"></span>PBD Project</div></header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>PBD Call Copilot</h1>
+    <p>A private panel beside your Zoom call. It listens, then suggests what to ask next, in plain words, with the paper behind it. It never joins the call and is hidden when you share your screen.</p>
+    <a class="btn" href="https://github.com/__OWNER__/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Windows.zip">Download for Windows</a>
+    <span class="meta">Windows 10 or 11 · about 600 MB · free</span>
+  </div>
+</div>
+
+<main class="wrap">
+  <section>
+    <h2>Set up (one time, about 5 minutes)</h2>
+    <ol class="steps">
+      <li><div>Download the zip above and <strong>unzip it</strong> anywhere, for example into Documents.</div></li>
+      <li><div>Open the folder and double-click <strong>PBD Call Copilot.exe</strong>. If Windows shows "Windows protected your PC", click <strong>More info → Run anyway</strong>. This happens once because the app is new.</div></li>
+      <li><div>On first launch, paste the PBD key Genevieve sends you. It is saved only on this PC.</div></li>
+      <li><div>Right-click the app in the taskbar and choose <strong>Pin to taskbar</strong>.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>During a call</h2>
+    <div class="grid">
+      <div class="card"><h3>Starts by itself</h3><p>When a Zoom meeting opens, the panel switches on. When the meeting ends, it stops.</p></div>
+      <div class="card"><h3>Off when you want</h3><p>Click the toggle, or press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>, to pause or resume.</p></div>
+      <div class="card"><h3>Two cards at a time</h3><p>What to ask next, what it means for PBD, the terms explained, and a link to the paper.</p></div>
+      <div class="card"><h3>Private</h3><p>Audio is never saved or sent. Speech is turned into text on this PC. Only the text goes to Claude.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">PBD Project · Internal tool · Questions: Genevieve</div></footer>
+</body>
+</html>

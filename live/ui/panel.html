@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PBD Call Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#061D28;--card:#0B2A38;--card2:#0E3342;--deep:#082532;--line:#1C4453;--text:#FFFFFF;--body:#C9DCE2;--muted:#8FB0BA;--teal:#1BB1BB;--teal2:#0F8795;--star:#E8D075;--off:#3A5663;--bad:#F09A92}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--text);font-family:Roboto,"Segoe UI",system-ui,sans-serif;font-size:15px;display:flex;flex-direction:column;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column}
+.brand b,.ask,.plain h2,.empty b{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif}
+.brand b{font-size:16px;letter-spacing:-.02em}
+.brand span{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.grow{flex:1}
+.toggle{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:14px;font-weight:600;transition:background-color .18s}
+.toggle:hover{background:var(--card2)}
+.track{width:38px;height:22px;background:var(--off);padding:3px;display:flex;transition:background-color .28s}
+.knob{width:16px;height:16px;background:#fff;transition:transform .32s cubic-bezier(.34,1.4,.5,1)}
+.on .track{background:var(--teal)} .on .knob{transform:translateX(16px)}
+.sub{padding:10px 20px;display:flex;gap:18px;align-items:center;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+.bars{display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle}
+.bars i{width:3px;background:var(--off);transform-origin:bottom}
+.live .bars i{background:var(--teal);animation:bar 1.2s ease-in-out infinite}
+@keyframes bar{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+.plain{margin:16px 20px 0;padding:14px 16px;background:var(--deep);border:1px solid var(--line);animation:fade .4s ease both}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+.plain p{margin:6px 0 0;font-size:15px;line-height:1.55;color:var(--body)}
+.plain h2{margin:4px 0 0;font-size:17px;letter-spacing:-.01em}
+main{flex:1;overflow:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
+.card.newest{border-color:var(--teal);animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both,glow 1.8s ease-out .5s 1}
+.card.leaving{animation:cardOut .32s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes cardOut{to{opacity:0;transform:translateX(16px);max-height:0;margin-top:-14px}}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(27,177,187,.5)}100%{box-shadow:0 0 0 12px rgba(27,177,187,0)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.cmain{padding:16px 16px 12px;display:flex;flex-direction:column;gap:10px}
+.kind{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kind.next{color:var(--teal)}
+.ask{font-size:18px;font-weight:600;line-height:1.4;letter-spacing:-.01em}
+.why{font-size:14px;line-height:1.5;color:var(--body)} .why b{color:#fff}
+.terms{padding:10px 16px;border-top:1px solid var(--line);background:var(--deep);display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--body)}
+.terms b{color:#fff}
+.paper{display:block;padding:10px 16px;background:var(--card2);color:#fff;text-decoration:none;font-size:13px;line-height:1.4;transition:background-color .18s}
+.paper:hover{background:#12404F} .paper em{display:block;font-style:normal;color:var(--teal);font-size:12px;margin-top:3px}
+.actions{display:flex;border-top:1px solid var(--line)}
+.actions button{height:44px;border:none;background:transparent;color:var(--muted);padding:0 14px;font-size:13px;transition:background-color .18s,color .18s}
+.actions button:hover{background:var(--card2);color:#fff}
+.actions .starred{color:var(--star)}
+.empty{margin:auto;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;max-width:36ch;animation:fade .4s ease both}
+.empty b{display:block;color:#fff;font-size:20px;margin-bottom:6px}
+#transcript{display:none;font-size:13px;line-height:1.55;color:var(--body)}
+#transcript div{padding:4px 0;border-bottom:1px solid var(--line)} #transcript span{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.showtx #transcript{display:block} .showtx #cards{display:none}
+footer{padding:10px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+footer button{border:none;background:none;color:var(--teal);font-size:12px;padding:8px 0}
+.err{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="0" y="12" width="6" height="6" fill="#1BB1BB"/><rect x="6" y="6" width="6" height="6" fill="#0F8795"/><rect x="12" y="0" width="6" height="6" fill="#fff"/><rect x="12" y="12" width="6" height="6" fill="#0F8795"/></svg>
+  <div class="brand"><b>Call Copilot</b><span>PBD Project</span></div>
+  <div class="grow"></div>
+  <button id="toggle" class="toggle" aria-pressed="false" title="Ctrl + Alt + P"><span class="track"><span class="knob"></span></span><span id="state">Off</span></button>
+</header>
+<div class="sub" id="sub">
+  <span>You<span class="bars"><i style="height:5px"></i><i style="height:9px;animation-delay:.3s"></i><i style="height:6px;animation-delay:.15s"></i></span></span>
+  <span>Them<span class="bars"><i style="height:9px;animation-delay:.1s"></i><i style="height:14px;animation-delay:.4s"></i><i style="height:11px;animation-delay:.25s"></i></span></span>
+  <span class="grow"></span><span id="clock"></span><span>Hidden from screen share</span>
+</div>
+<div id="plainbox"></div>
+<main id="main">
+  <div id="cards"><div class="empty"><b>Ready</b>Turns on by itself when a Zoom call starts. Ctrl + Alt + P turns it on or off any time.</div></div>
+  <div id="transcript"></div>
+</main>
+<footer><span id="saved">0 saved for follow-up</span><span id="model"></span><button id="txbtn" type="button">Show transcript</button></footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let cards = [], starred = [], on = false, startedAt = null;
+
+function api(){ return (window.pywebview && window.pywebview.api) || null; }
+$("toggle").onclick = () => api() && api().toggle();
+$("txbtn").onclick = () => { document.body.classList.toggle("showtx"); $("txbtn").textContent = document.body.classList.contains("showtx") ? "Show suggestions" : "Show transcript"; };
+
+function setOn(v){
+  on = v; $("toggle").classList.toggle("on", v); $("toggle").setAttribute("aria-pressed", String(v));
+  $("state").textContent = v ? "Listening" : "Off"; $("sub").classList.toggle("live", v);
+  if (v && !startedAt) startedAt = Date.now(); if (!v) startedAt = null;
+}
+setInterval(() => { if (!startedAt) { $("clock").textContent = ""; return; } const s = Math.floor((Date.now()-startedAt)/1000); $("clock").textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; }, 1000);
+
+function render(){
+  const box = $("cards");
+  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>Suggestions appear when the conversation gets going, about every minute.</div>' : '<div class="empty"><b>Ready</b>Turns on by itself when a Zoom call starts. Ctrl + Alt + P turns it on or off any time.</div>'; return; }
+  box.innerHTML = cards.map((c, i) => `
+    <article class="card ${i === 0 ? "newest" : ""}" data-i="${i}">
+      <div class="cmain">
+        <span class="kind ${c.kind === "next_step" ? "next" : ""}">${c.kind === "next_step" ? "Next step for PBD" : "Ask"} · ${esc(c.at)}</span>
+        <div class="ask">${esc(c.ask)}</div>
+        <div class="why"><b>What this means for PBD:</b> ${esc(c.why)}</div>
+      </div>
+      ${(c.terms||[]).length ? `<div class="terms">${c.terms.map(t => `<span><b>${esc(t.term)}</b> = ${esc(t.plain)}</span>`).join("")}</div>` : ""}
+      ${c.paper ? `<a class="paper" href="https://pubmed.ncbi.nlm.nih.gov/${esc(c.paper.pmid)}/" target="_blank">${esc(c.paper.title)}<em>${esc(c.paper.first_author)} et al. ${esc(c.paper.year)} · ${esc(c.paper.journal)} · PMID ${esc(c.paper.pmid)} ✓</em></a>` : ""}
+      <div class="actions"><span class="grow"></span>
+        <button type="button" class="${starred.includes(c.ask) ? "starred" : ""}" onclick="star(${i})">${starred.includes(c.ask) ? "★ Saved" : "☆ Save for follow-up"}</button>
+        <button type="button" onclick="dismiss(${i})" aria-label="Dismiss">✕</button>
+      </div>
+    </article>`).join("");
+}
+function star(i){ const a = cards[i].ask; starred = starred.includes(a) ? starred.filter(x => x !== a) : starred.concat(a); $("saved").textContent = `${starred.length} saved for follow-up`; api() && api().star(a); render(); }
+function dismiss(i){ const el = document.querySelector(`[data-i="${i}"]`); if (el) el.classList.add("leaving"); setTimeout(() => { cards.splice(i, 1); render(); }, 320); }
+
+window.onCopilotEvent = (e) => {
+  if (e.type === "status"){
+    if (e.state === "listening"){ setOn(true); if (e.model) $("model").textContent = "Transcribing with " + e.model; render(); }
+    else if (e.state === "loading"){ $("state").textContent = "Starting…"; }
+    else if (e.state === "off"){ setOn(false); render(); }
+    else if (e.state === "saved"){ $("model").textContent = "Transcript saved on this computer"; }
+  } else if (e.type === "line"){
+    const d = document.createElement("div");
+    d.innerHTML = `<span>${esc(e.speaker)}</span> ${esc(e.text)}`; $("transcript").appendChild(d);
+  } else if (e.type === "suggestions"){
+    if (e.in_plain_words) $("plainbox").innerHTML = `<div class="plain"><span class="eyebrow">In plain words · ${esc(e.at)}</span><h2>${esc(e.topic||"")}</h2><p>${esc(e.in_plain_words)}</p></div>`;
+    else if (e.topic) $("plainbox").innerHTML = `<div class="plain"><span class="eyebrow">Now discussing · ${esc(e.at)}</span><h2>${esc(e.topic)}</h2></div>`;
+    const incoming = (e.cards||[]).map(c => Object.assign({at: e.at}, c));
+    if (incoming.length) cards = incoming.concat(cards).slice(0, 2);   // Andrew: 2 at a time
+    render();
+  } else if (e.type === "error"){
+    $("model").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }
+};
+</script>
+</body>
+</html>

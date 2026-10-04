@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PBD Call Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#061D28;--card:#0B2A38;--line:#1C4453;--body:#C9DCE2;--muted:#8FB0BA;--teal:#1BB1BB;--teal2:#04849E;--bad:#F09A92}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:#fff;font:15px/1.55 Roboto,"Segoe UI",system-ui,sans-serif;display:grid;place-items:center;padding:24px}
+.box{width:100%;max-width:460px;background:var(--card);border:1px solid var(--line);padding:28px;animation:in .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h1{font:700 22px "Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif;margin:0 0 8px}
+p{color:var(--body);margin:0 0 18px}
+label{display:block;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+input{width:100%;height:44px;padding:0 12px;background:var(--ink);border:1px solid var(--line);color:#fff;font:14px Consolas,ui-monospace,monospace}
+input:focus{outline:2px solid var(--teal);outline-offset:1px}
+button{margin-top:16px;width:100%;height:46px;border:none;background:var(--teal2);color:#fff;font:500 15px Roboto,sans-serif;cursor:pointer;transition:background-color .2s}
+button:hover{background:#036E84}
+#msg{min-height:22px;margin-top:12px;font-size:13px;color:var(--bad)}
+small{display:block;margin-top:14px;color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion:reduce){.box{animation:none}}
+</style>
+</head>
+<body>
+<form class="box" id="f">
+  <h1>Welcome to PBD Call Copilot</h1>
+  <p>One-time setup. Paste the PBD key Genevieve sent you.</p>
+  <label for="key">PBD key</label>
+  <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" required>
+  <button type="submit">Save and start</button>
+  <div id="msg" role="status"></div>
+  <small>Saved only on this PC, in your user folder. You won't be asked again.</small>
+</form>
+<script>
+document.getElementById("f").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const msg = document.getElementById("msg");
+  msg.style.color = "var(--muted)"; msg.textContent = "Checking the key…";
+  const err = await window.pywebview.api.save_key(document.getElementById("key").value.trim());
+  if (err) { msg.style.color = "var(--bad)"; msg.textContent = err; }
+};
+</script>
+</body>
+</html>

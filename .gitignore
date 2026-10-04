@@ -1,0 +1,14 @@
+# Never commit: secrets, private briefing, call content, big data
+.env
+*.env
+interests.md
+transcripts/
+results/
+test_audio/
+models/
+*.wav
+__pycache__/
+*.pyc
+dist/
+build/
+.DS_Store

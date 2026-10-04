@@ -1,0 +1,7 @@
+# PBD Call Copilot (Windows). Python 3.11.
+anthropic>=0.102
+faster-whisper>=1.2
+numpy
+soundcard        # Windows loopback + mic capture (WASAPI)
+pywebview>=5     # the panel window (uses Edge WebView2, built into Windows 10/11)
+pynput           # Ctrl+Alt+P hotkey
