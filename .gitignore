@@ -12,3 +12,4 @@ __pycache__/
 dist/
 build/
 .DS_Store
+live/mac/pbd-syscap

@@ -12,7 +12,8 @@ body{background:var(--ink);color:var(--text);font-family:Roboto,"Segoe UI",syste
 button{font-family:inherit;cursor:pointer}
 button:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
-.brand{display:flex;flex-direction:column}
+.logo{height:30px;width:auto;display:block}
+.brand{display:flex;flex-direction:column;padding-left:12px;border-left:1px solid var(--line)}
 .brand b,.ask,.plain h2,.empty b{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif}
 .brand b{font-size:16px;letter-spacing:-.02em}
 .brand span{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
@@ -65,15 +66,15 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
 </head>
 <body>
 <header>
-  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="0" y="12" width="6" height="6" fill="#1BB1BB"/><rect x="6" y="6" width="6" height="6" fill="#0F8795"/><rect x="12" y="0" width="6" height="6" fill="#fff"/><rect x="12" y="12" width="6" height="6" fill="#0F8795"/></svg>
-  <div class="brand"><b>Call Copilot</b><span>PBD Project</span></div>
+  <img class="logo" src="pbd-logo-white.png" alt="PBD Project">
+  <div class="brand"><b>Call Copilot</b></div>
   <div class="grow"></div>
-  <button id="toggle" class="toggle" aria-pressed="false" title="Ctrl + Alt + P"><span class="track"><span class="knob"></span></span><span id="state">Off</span></button>
+  <button id="toggle" class="toggle" aria-pressed="false" title="Ctrl + Alt + P (Mac: Control + Option + P)"><span class="track"><span class="knob"></span></span><span id="state">Off</span></button>
 </header>
 <div class="sub" id="sub">
   <span>You<span class="bars"><i style="height:5px"></i><i style="height:9px;animation-delay:.3s"></i><i style="height:6px;animation-delay:.15s"></i></span></span>
   <span>Them<span class="bars"><i style="height:9px;animation-delay:.1s"></i><i style="height:14px;animation-delay:.4s"></i><i style="height:11px;animation-delay:.25s"></i></span></span>
-  <span class="grow"></span><span id="clock"></span><span>Hidden from screen share</span>
+  <span class="grow"></span><span id="clock"></span><span id="sharenote">Hidden from screen share</span>
 </div>
 <div id="plainbox"></div>
 <main id="main">
@@ -87,6 +88,8 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let cards = [], starred = [], on = false, startedAt = null;
 
+// macOS doesn't reliably keep windows out of whole-screen shares.
+if (/Mac/.test(navigator.platform)) { $("sharenote").textContent = "Share one window, not your whole screen"; $("toggle").title = "Control + Option + P"; }
 function api(){ return (window.pywebview && window.pywebview.api) || null; }
 $("toggle").onclick = () => api() && api().toggle();
 $("txbtn").onclick = () => { document.body.classList.toggle("showtx"); $("txbtn").textContent = document.body.classList.contains("showtx") ? "Show suggestions" : "Show transcript"; };

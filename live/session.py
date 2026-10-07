@@ -20,7 +20,7 @@ from typing import Callable, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # engine lives one folder up
 
 import copilot  # noqa: E402
-from audio import FileSource, WindowsSource  # noqa: E402
+from audio import FileSource, MacMicSource, MacSystemSource, WindowsSource  # noqa: E402
 from transcriber import LiveTranscriber  # noqa: E402
 
 SUGGEST_EVERY_S = 75      # how often a new stretch of conversation is analysed
@@ -59,6 +59,14 @@ class CallSession:
         self._save()
         self.events({"type": "status", "state": "off"})
 
+    def _check_mac_permission(self) -> None:
+        """The other side of the call needs macOS's screen & audio recording permission."""
+        time.sleep(5)
+        if self.running and not self.sources[1].is_alive():
+            self.events({"type": "error", "message":
+                         "Can't hear the other side of the call. Open System Settings > Privacy & Security > "
+                         "Screen & System Audio Recording, turn on PBD Call Copilot, then quit and reopen the app."})
+
     # -- workers ---------------------------------------------------------
     def _run(self) -> None:
         try:
@@ -67,6 +75,11 @@ class CallSession:
             self.events({"type": "status", "state": "listening", "model": tr.model_name})
             if self.test_wav:
                 self.sources = [FileSource("Them", self.audio_q, self.started, self.test_wav)]
+            elif sys.platform == "darwin":
+                self.sources = [
+                    MacMicSource("Andrew", self.audio_q, self.started),
+                    MacSystemSource("Them", self.audio_q, self.started),
+                ]
             else:
                 self.sources = [
                     WindowsSource("Andrew", self.audio_q, self.started, loopback=False),
@@ -74,6 +87,8 @@ class CallSession:
                 ]
             for s in self.sources:
                 s.start()
+            if sys.platform == "darwin" and not self.test_wav:
+                threading.Thread(target=self._check_mac_permission, daemon=True).start()
             threading.Thread(target=self._suggest_loop, daemon=True).start()
             while self.running:
                 try:

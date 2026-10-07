@@ -2,20 +2,24 @@
 
 Two sources, kept separate so the transcript knows who spoke:
   - "Andrew": the microphone
-  - "Them":   everything the PC is playing (the other people on the Zoom call),
-              captured with Windows' built-in loopback - nothing joins the call.
+  - "Them":   everything the computer is playing (the other people on the Zoom call),
+              captured with Windows' built-in loopback, or on a Mac with Apple's
+              ScreenCaptureKit (mac/syscap.swift) - nothing joins the call.
 
 FileSource replays a .wav as if it were live, for testing on any machine.
 """
 from __future__ import annotations
 
 import queue
+import subprocess
+import sys
 import threading
 import time
 import wave
 from dataclasses import dataclass
 
 import numpy as np
+from pathlib import Path
 
 RATE = 16000          # what Whisper expects
 BLOCK_SECONDS = 0.5   # how often each source hands over audio
@@ -58,6 +62,44 @@ class WindowsSource(_Source):
                 data = rec.record(numframes=frames)
                 mono = data.mean(axis=1) if data.ndim > 1 else data
                 self.out.put(Chunk(self.speaker, mono.astype(np.float32), time.time() - self.t0))
+
+
+class MacMicSource(_Source):
+    """The Mac's microphone through `soundcard` (CoreAudio)."""
+
+    def run(self) -> None:
+        import soundcard as sc
+
+        frames = int(RATE * BLOCK_SECONDS)
+        with sc.default_microphone().recorder(samplerate=RATE, channels=1, blocksize=frames) as rec:
+            while not self.stop_event.is_set():
+                data = rec.record(numframes=frames)
+                mono = data.mean(axis=1) if data.ndim > 1 else data
+                self.out.put(Chunk(self.speaker, mono.astype(np.float32), time.time() - self.t0))
+
+
+def _syscap_path() -> Path:
+    """The pbd-syscap helper: inside the packaged app, or built next to the source."""
+    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return root / "mac" / "pbd-syscap"
+
+
+class MacSystemSource(_Source):
+    """What the Mac is playing, via the pbd-syscap helper (16 kHz mono float32 on stdout)."""
+
+    def run(self) -> None:
+        proc = subprocess.Popen([str(_syscap_path())], stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        block = int(RATE * BLOCK_SECONDS) * 4
+        try:
+            while not self.stop_event.is_set():
+                raw = proc.stdout.read(block)
+                if not raw:   # helper stopped (e.g. permission not granted yet)
+                    return
+                samples = np.frombuffer(raw[: len(raw) // 4 * 4], dtype=np.float32)
+                self.out.put(Chunk(self.speaker, samples.copy(), time.time() - self.t0))
+        finally:
+            proc.kill()
 
 
 class FileSource(_Source):

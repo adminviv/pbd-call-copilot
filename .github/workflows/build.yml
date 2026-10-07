@@ -1,0 +1,118 @@
+# Builds the Windows and Mac apps on GitHub's machines and publishes them together
+# as the latest release, which the download page links to. Runs on every push to
+# main and on demand (Actions tab -> Build -> Run workflow).
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  WHISPER_MODEL: small.en   # ships inside the app, no download on the user's computer
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r live/requirements.txt pyinstaller
+      - name: Download the speech model
+        shell: bash
+        run: ./.github/get-model.sh
+      - name: Build the app
+        run: >
+          pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
+          --paths . --paths live
+          --add-data "live/ui;ui"
+          --add-data "models;models"
+          --collect-all faster_whisper --collect-all ctranslate2
+          --collect-all webview --collect-all soundcard
+          --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32
+          live/app.py
+      - name: Zip it
+        shell: pwsh
+        run: Compress-Archive -Path "dist/PBD Call Copilot" -DestinationPath "PBD-Call-Copilot-Windows.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: PBD-Call-Copilot-Windows.zip
+          retention-days: 3
+
+  mac:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15          # Apple Silicon (M1 and newer)
+            arch: arm64
+            zip: PBD-Call-Copilot-Mac-AppleSilicon.zip
+          - runner: macos-15-intel    # Intel Macs
+            arch: x86_64
+            zip: PBD-Call-Copilot-Mac-Intel.zip
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r live/requirements.txt pyinstaller
+      - name: Download the speech model
+        run: ./.github/get-model.sh
+      - name: Build the system-audio helper (ScreenCaptureKit)
+        run: swiftc -O -target ${{ matrix.arch }}-apple-macos13.0 -o live/mac/pbd-syscap live/mac/syscap.swift
+      - name: Build the app
+        run: >
+          pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
+          --osx-bundle-identifier org.pbdproject.callcopilot
+          --paths . --paths live
+          --add-data "live/ui:ui"
+          --add-data "models:models"
+          --add-binary "live/mac/pbd-syscap:mac"
+          --collect-all faster_whisper --collect-all ctranslate2
+          --collect-all webview --collect-all soundcard
+          --hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin
+          live/app.py
+      - name: Add permission messages and sign
+        run: |
+          PLIST="dist/PBD Call Copilot.app/Contents/Info.plist"
+          plutil -insert NSMicrophoneUsageDescription -string "PBD Call Copilot listens to your side of the call to suggest questions. Audio is never saved." "$PLIST"
+          plutil -replace LSMinimumSystemVersion -string "13.0" "$PLIST"
+          codesign --force --deep --sign - "dist/PBD Call Copilot.app"
+      - name: Zip it
+        run: ditto -c -k --keepParent "dist/PBD Call Copilot.app" "${{ matrix.zip }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-${{ matrix.arch }}
+          path: ${{ matrix.zip }}
+          retention-days: 3
+
+  release:
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Publish as the latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: PBD Call Copilot (build ${{ github.run_number }})
+          make_latest: true
+          files: |
+            PBD-Call-Copilot-Windows.zip
+            PBD-Call-Copilot-Mac-AppleSilicon.zip
+            PBD-Call-Copilot-Mac-Intel.zip
