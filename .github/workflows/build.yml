@@ -40,13 +40,17 @@ jobs:
           --collect-all webview --collect-all soundcard
           --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32
           live/app.py
-      - name: Zip it
+      - name: Make the installer (Setup.exe)
         shell: pwsh
-        run: Compress-Archive -Path "dist/PBD Call Copilot" -DestinationPath "PBD-Call-Copilot-Windows.zip"
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc /DAppVersion=1.0.${{ github.run_number }} installer\windows.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: PBD-Call-Copilot-Windows.zip
+          path: installer/PBD-Call-Copilot-Setup.exe
           retention-days: 3
 
   mac:
@@ -113,6 +117,6 @@ jobs:
           name: PBD Call Copilot (build ${{ github.run_number }})
           make_latest: true
           files: |
-            PBD-Call-Copilot-Windows.zip
+            PBD-Call-Copilot-Setup.exe
             PBD-Call-Copilot-Mac-AppleSilicon.zip
             PBD-Call-Copilot-Mac-Intel.zip

@@ -21,7 +21,24 @@ import threading
 import time
 from pathlib import Path
 
-import webview
+
+def _unblock_own_files() -> None:
+    """Files unzipped from a download carry Windows' "from the internet" mark, and .NET then
+    refuses to load the window's Python.Runtime.dll. Clear the mark before the window loads."""
+    root = getattr(sys, "_MEIPASS", None)
+    if not (root and sys.platform.startswith("win")):
+        return
+    import os
+    for folder, _, files in os.walk(os.path.dirname(root)):
+        for name in files:
+            try:
+                os.remove(os.path.join(folder, name) + ":Zone.Identifier")
+            except OSError:
+                pass
+
+
+_unblock_own_files()
+import webview  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
