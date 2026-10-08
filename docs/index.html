@@ -28,7 +28,18 @@
   .btn { display: inline-block; background: var(--teal); color: var(--white); text-decoration: none;
          font-weight: 500; padding: 15px 26px; transition: background .25s ease, transform .25s ease; }
   .btn:hover { background: #036E84; transform: translateY(-1px); }
-  .meta { display: block; margin-top: 12px; font-size: 14px; color: var(--lilac); }
+  .meta { display: block; margin-top: 12px; font-size: 14px; color: var(--lilac); max-width: 640px; }
+  .meta strong { color: var(--white); font-weight: 500; }
+  .tabs { display: inline-flex; border: 1px solid rgba(255,255,255,.25); margin-bottom: 20px; }
+  .tabs button { font: 500 15px Roboto, sans-serif; color: #D6DFF2; background: transparent; border: 0;
+                 padding: 10px 22px; cursor: pointer; transition: background .25s ease, color .25s ease; }
+  .tabs button[aria-selected="true"] { background: var(--white); color: var(--blue); }
+  .tabs button:focus-visible, .btn:focus-visible { outline: 2px solid var(--lilac); outline-offset: 2px; }
+  .pane { animation: fade .35s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn.alt { background: transparent; border: 1px solid var(--teal); color: var(--white); }
+  .btn.alt:hover { background: rgba(4,132,158,.25); }
   main { padding: 48px 16px 64px; }
   section + section { margin-top: 48px; }
   h2 { font-size: 26px; margin-bottom: 16px; }
@@ -44,7 +55,7 @@
   .card h3 { font-size: 18px; margin-bottom: 6px; }
   .card p { margin: 0; font-size: 15px; }
   footer { border-top: 1px solid var(--line); padding: 24px 16px; font-size: 14px; color: #5B6072; }
-  @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .btn, .tabs button { transition: none; } .pane { animation: none; } }
 </style>
 </head>
 <body>
@@ -53,20 +64,44 @@
 <div class="hero">
   <div class="wrap">
     <h1>PBD Call Copilot</h1>
-    <p>A private panel beside your Zoom call. It listens, then suggests what to ask next, in plain words, with the paper behind it. It never joins the call and is hidden when you share your screen.</p>
-    <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Windows.zip">Download for Windows</a>
-    <span class="meta">Windows 10 or 11 · about 600 MB · free</span>
+    <p>A private panel beside your Zoom call. It listens, then suggests what to ask next, in plain words, with the paper behind it. It never joins the call.</p>
+    <div class="tabs" role="tablist" aria-label="Choose your computer">
+      <button role="tab" id="tab-win" aria-controls="pane-win" aria-selected="true">Windows</button>
+      <button role="tab" id="tab-mac" aria-controls="pane-mac" aria-selected="false">Mac</button>
+    </div>
+    <div class="pane" id="pane-win" role="tabpanel" aria-labelledby="tab-win">
+      <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Windows.zip">Download for Windows</a>
+      <span class="meta">Windows 10 or 11 · about 550 MB · free</span>
+    </div>
+    <div class="pane" id="pane-mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
+      <div class="btns">
+        <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Mac-AppleSilicon.zip">Mac with Apple chip (M1–M4)</a>
+        <a class="btn alt" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Mac-Intel.zip">Mac with Intel chip</a>
+      </div>
+      <span class="meta">macOS 13 Ventura or newer · about 550 MB · free · Not sure which Mac? Apple menu (top left) → <strong>About This Mac</strong>: it says "Chip: Apple M…" or "Processor: Intel".</span>
+    </div>
   </div>
 </div>
 
 <main class="wrap">
-  <section>
-    <h2>Set up (one time, about 5 minutes)</h2>
+  <section class="pane-win">
+    <h2>Set up on Windows (one time, about 5 minutes)</h2>
     <ol class="steps">
       <li><div>Download the zip above and <strong>unzip it</strong> anywhere, for example into Documents.</div></li>
       <li><div>Open the folder and double-click <strong>PBD Call Copilot.exe</strong>. If Windows shows "Windows protected your PC", click <strong>More info → Run anyway</strong>. This happens once because the app is new.</div></li>
-      <li><div>On first launch, paste the PBD key Genevieve sends you. It is saved only on this PC.</div></li>
+      <li><div>On first launch, paste the PBD key Genevieve sends you. It is saved only on this computer.</div></li>
       <li><div>Right-click the app in the taskbar and choose <strong>Pin to taskbar</strong>.</div></li>
+    </ol>
+  </section>
+
+  <section class="pane-mac" hidden>
+    <h2>Set up on Mac (one time, about 5 minutes)</h2>
+    <ol class="steps">
+      <li><div>Double-click the downloaded zip, then drag <strong>PBD Call Copilot</strong> into your <strong>Applications</strong> folder.</div></li>
+      <li><div>Open it. macOS will say it can't check the app for malicious software: click <strong>Done</strong>, then open <strong>System Settings → Privacy &amp; Security</strong>, scroll down, click <strong>Open Anyway</strong>, and confirm. This happens once because the app is new.</div></li>
+      <li><div>Paste the PBD key Genevieve sends you. It is saved only on this computer.</div></li>
+      <li><div>Allow the <strong>microphone</strong> when asked. Then, in <strong>System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording</strong>, turn on <strong>PBD Call Copilot</strong> and choose <strong>Quit &amp; Reopen</strong>. This lets it hear the other people on the call; nothing is recorded or saved.</div></li>
+      <li><div>Right-click its icon in the Dock and choose <strong>Options → Keep in Dock</strong>.</div></li>
     </ol>
   </section>
 
@@ -74,12 +109,31 @@
     <h2>During a call</h2>
     <div class="grid">
       <div class="card"><h3>Starts by itself</h3><p>When a Zoom meeting opens, the panel switches on. When the meeting ends, it stops.</p></div>
-      <div class="card"><h3>Off when you want</h3><p>Click the toggle, or press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>, to pause or resume.</p></div>
+      <div class="card"><h3>Off when you want</h3><p>Click the toggle, or press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> (Mac: <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>P</kbd>), to pause or resume.</p></div>
       <div class="card"><h3>Two cards at a time</h3><p>What to ask next, what it means for PBD, the terms explained, and a link to the paper.</p></div>
-      <div class="card"><h3>Private</h3><p>Audio is never saved or sent. Speech is turned into text on this PC. Only the text goes to Claude.</p></div>
+      <div class="card"><h3>Screen sharing</h3><p>On Windows the panel is hidden from screen shares. On a Mac, share a single window rather than your whole screen.</p></div>
+      <div class="card"><h3>Private</h3><p>Audio is never saved or sent. Speech is turned into text on your computer. Only the text goes to Claude.</p></div>
     </div>
   </section>
 </main>
+
+<script>
+  // Show the visitor's own computer first; either tab can still be picked.
+  function show(os) {
+    for (const k of ["win", "mac"]) {
+      const on = k === os;
+      document.getElementById("tab-" + k).setAttribute("aria-selected", String(on));
+      document.getElementById("pane-" + k).hidden = !on;
+      document.querySelector(".pane-" + k).hidden = !on;
+    }
+    try { localStorage.setItem("os", os); } catch (e) {}
+  }
+  document.getElementById("tab-win").onclick = () => show("win");
+  document.getElementById("tab-mac").onclick = () => show("mac");
+  let saved = null;
+  try { saved = localStorage.getItem("os"); } catch (e) {}
+  show(saved || (/Mac/.test(navigator.platform || navigator.userAgent) ? "mac" : "win"));
+</script>
 
 <footer><div class="wrap">PBD Project · Internal tool · Questions: Genevieve</div></footer>
 </body>

@@ -20,7 +20,7 @@ final class Capturer: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         let config = SCStreamConfiguration()
         config.capturesAudio = true
-        config.excludesCurrentProcessAudio = true
+        config.excludesCurrentProcessAudio = false   // the app plays no sound; "true" also muted sounds started by the same parent app
         config.sampleRate = 16000
         config.channelCount = 1
         // Audio only: keep the (required) video side tiny and slow.
