@@ -26,6 +26,7 @@ from transcriber import LiveTranscriber  # noqa: E402
 SUGGEST_EVERY_S = 75      # how often a new stretch of conversation is analysed
 MIN_NEW_WORDS = 60        # skip if little was said since last time
 MAX_CARDS = 2             # Andrew: "2 sounds good"
+MAX_LAG_S = 20            # if speech-to-text falls this far behind, skip ahead to the present
 TRANSCRIPTS = Path.home() / "Documents" / "PBD Call Copilot" / "transcripts"
 
 
@@ -98,7 +99,13 @@ class CallSession:
             threading.Thread(target=self._suggest_loop, daemon=True).start()
             while self.running:
                 try:
-                    tr.feed(self.audio_q.get(timeout=0.5))
+                    chunk = self.audio_q.get(timeout=0.5)
+                    lag = time.time() - self.started - chunk.t
+                    if lag > MAX_LAG_S and not self.test_wav:
+                        skipped = self._skip_to_now()
+                        self.events({"type": "status", "state": "skipped", "seconds": round(lag + skipped)})
+                        continue
+                    tr.feed(chunk)
                 except queue.Empty:
                     if self.test_wav and not any(s.is_alive() for s in self.sources):
                         tr.flush_all()
@@ -109,6 +116,15 @@ class CallSession:
         except Exception as e:  # surface, don't crash the window
             self.events({"type": "error", "message": f"{type(e).__name__}: {e}"})
             self.running = False
+
+    def _skip_to_now(self) -> float:
+        """Drop queued audio so the panel stays live instead of building a backlog."""
+        dropped = 0.0
+        while True:
+            try:
+                dropped += len(self.audio_q.get_nowait().samples) / 16000
+            except queue.Empty:
+                return dropped
 
     def _on_line(self, line: Dict) -> None:
         if not self.running:   # finished transcribing after Andrew switched off: discard

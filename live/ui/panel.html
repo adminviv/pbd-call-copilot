@@ -78,7 +78,7 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
 </div>
 <div id="plainbox"></div>
 <main id="main">
-  <div id="cards"><div class="empty"><b>Ready</b>Turns on by itself when a Zoom call starts. Ctrl + Alt + P turns it on or off any time.</div></div>
+  <div id="cards"><div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div></div>
   <div id="transcript"></div>
 </main>
 <footer><span id="saved">0 saved for follow-up</span><span id="model"></span><button id="txbtn" type="button">Show transcript</button></footer>
@@ -103,7 +103,7 @@ setInterval(() => { if (!startedAt) { $("clock").textContent = ""; return; } con
 
 function render(){
   const box = $("cards");
-  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>Suggestions appear when the conversation gets going, about every minute.</div>' : '<div class="empty"><b>Ready</b>Turns on by itself when a Zoom call starts. Ctrl + Alt + P turns it on or off any time.</div>'; return; }
+  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>Suggestions appear when the conversation gets going, about every minute.</div>' : '<div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div>'; return; }
   box.innerHTML = cards.map((c, i) => `
     <article class="card ${i === 0 ? "newest" : ""}" data-i="${i}">
       <div class="cmain">
@@ -127,6 +127,7 @@ window.onCopilotEvent = (e) => {
     if (e.state === "listening"){ setOn(true); if (e.model) $("model").textContent = "Transcribing with " + e.model; render(); }
     else if (e.state === "loading"){ $("state").textContent = "Starting…"; }
     else if (e.state === "off"){ setOn(false); render(); }
+    else if (e.state === "skipped"){ $("model").textContent = `Skipped ${e.seconds}s of audio to keep up`; }
     else if (e.state === "saved"){ $("model").textContent = "Transcript saved on this computer"; }
   } else if (e.type === "line"){
     const d = document.createElement("div");

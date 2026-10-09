@@ -29,18 +29,13 @@ VOCAB = (
 
 
 def pick_model() -> tuple:
-    """Largest model that keeps up in real time on this machine."""
-    override = os.environ.get("COPILOT_WHISPER_MODEL")
-    try:
-        import ctranslate2
-        if ctranslate2.get_cuda_device_count() > 0:
-            return override or "large-v3-turbo", "cuda", "float16"
-    except Exception:
-        pass
-    cores = os.cpu_count() or 4
-    if override:
-        return override, "cpu", "int8"
-    return ("small.en" if cores >= 8 else "base.en"), "cpu", "int8"
+    """The model that keeps up in real time on an ordinary laptop CPU.
+
+    Measured on an 8-thread Intel i7 laptop, one speaker: base.en transcribes 60 s
+    of speech in ~8 s; small.en needs ~260 s, which is why the first live test
+    (small.en on Andrew's PC, both sides of the call) fell ~20 minutes behind.
+    """
+    return os.environ.get("COPILOT_WHISPER_MODEL", "base.en"), "cpu", "int8"
 
 
 class LiveTranscriber:

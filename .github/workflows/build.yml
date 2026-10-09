@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 env:
-  WHISPER_MODEL: small.en   # ships inside the app, no download on the user's computer
+  WHISPER_MODEL: base.en    # ships inside the app, no download on the user's computer
 
 jobs:
   windows:
