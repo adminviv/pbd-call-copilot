@@ -12,7 +12,7 @@ Download page: https://copilot.pbdproject.org
 | Speech to text with a science vocabulary (faster-whisper) | PC | `live/transcriber.py` |
 | Topic → search the paper corpus → write cards → check claims | Claude | `copilot.py`, `knowledge.py` |
 | Check every cited paper exists (NCBI) | NCBI | `verify.py` |
-| Panel window, Zoom auto-start, Ctrl+Alt+P | PC | `live/app.py`, `live/ui/` |
+| Panel window, on/off switch, Ctrl+Alt+P (never starts on its own) | PC | `live/app.py`, `live/ui/` |
 
 Audio is never saved. The transcript is saved to `Documents\PBD Call Copilot\transcripts`.
 
