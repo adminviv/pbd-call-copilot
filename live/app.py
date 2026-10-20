@@ -80,6 +80,9 @@ class CopilotApp:
         self.window = None
         self.starred = []
         self.toggle_lock = threading.Lock()
+        self.ui_lock = threading.Lock()
+        self.ui_ready = False
+        self.ui_backlog = []
 
     # -- events from the session -> the panel ----------------------------
     def emit(self, event: dict) -> None:
@@ -87,8 +90,27 @@ class CopilotApp:
             self.recorded.append({"at": time.time(), "phase": self.phase, **event})
             if event.get("type") == "status" and event.get("state") == "off" and self.phase == "run":
                 threading.Thread(target=self._finish_self_test, daemon=True).start()
-        if self.window:
+        if not self.window:
+            return
+        with self.ui_lock:
+            if not self.ui_ready:          # window still loading: show it as soon as it can
+                self.ui_backlog.append(event)
+                return
+        self._show(event)
+
+    def _show(self, event: dict) -> None:
+        try:
             self.window.evaluate_js(f"window.onCopilotEvent({json.dumps(event)})")
+        except Exception:
+            pass   # a screen hiccup must never stop the listening itself
+
+    def _page_loaded(self) -> None:
+        with self.ui_lock:
+            self.ui_ready = True
+            backlog, self.ui_backlog = self.ui_backlog, []
+        for event in backlog:
+            if event.get("type") != "level":   # old sound levels are meaningless now
+                self._show(event)
 
     def toggle(self) -> None:
         """Only ever called by Andrew (switch or hotkey). On -> off works at any stage."""
@@ -156,9 +178,9 @@ class CopilotApp:
         if not timed_out:
             self.session = None
             self.toggle()            # on ...
-            time.sleep(0.3)
-            self.toggle()            # ... and off again while it is still starting
-            time.sleep(20)           # anything arriving now would be a bug
+            time.sleep(0.05)
+            self.toggle()            # ... and straight off again, while it is still starting
+            time.sleep(20)           # nothing may appear after the Off
         Path(self.report).write_text(json.dumps({
             "timed_out": timed_out, "offline": self.offline, "started_at": self.started_at,
             "session_started": getattr(self, "first_session_started", None), "events": self.recorded,
@@ -173,6 +195,7 @@ class CopilotApp:
             "PBD Call Copilot", str(HERE / "ui" / page), js_api=Api(self),
             width=760, height=1000, min_size=(480, 600), background_color="#061D28",
         )
+        self.window.events.loaded += self._page_loaded
         webview.start(self.on_loaded)
 
 

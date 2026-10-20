@@ -24,8 +24,10 @@ def main(path: str) -> int:
     lags = [e["at"] - t0 - e["t"] for e in lines]
     heard = " ".join(e["text"] for e in lines).lower()
     suggestions = [e for e in run if e["type"] == "suggestions"]
-    leaked = [e for e in after if e["type"] in ("line", "suggestions") or e.get("state") == "listening"]
-    off_at = after[0]["at"] if after else 0
+    # Off is pressed ~0.05 s after On; once the "off" status is out, nothing new may appear.
+    off_at = next((e["at"] for e in after if e.get("state") == "off"), after[-1]["at"] if after else 0)
+    leaked = [e for e in after if e["at"] > off_at and
+              (e["type"] in ("line", "suggestions") or e.get("state") == "listening")]
     cards = [c for e in suggestions for c in e.get("cards", [])]
 
     checks = [
