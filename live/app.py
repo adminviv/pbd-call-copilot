@@ -70,8 +70,11 @@ class Api:
 
 
 class CopilotApp:
-    def __init__(self, test_wav=None):
+    def __init__(self, test_wav=None, report=None, offline=False):
         self.test_wav = test_wav
+        self.report = report          # self-test: write every event here, then quit
+        self.offline = offline
+        self.recorded = []
         self.session = None
         self.window = None
         self.starred = []
@@ -79,6 +82,10 @@ class CopilotApp:
 
     # -- events from the session -> the panel ----------------------------
     def emit(self, event: dict) -> None:
+        if self.report:
+            self.recorded.append({"at": time.time(), "phase": self.phase, **event})
+            if event.get("type") == "status" and event.get("state") == "off" and self.phase == "run":
+                threading.Thread(target=self._finish_self_test, daemon=True).start()
         if self.window:
             self.window.evaluate_js(f"window.onCopilotEvent({json.dumps(event)})")
 
@@ -89,8 +96,10 @@ class CopilotApp:
                 self.session.stop()
                 self.session = None
             elif copilot.has_key():   # not before first-run setup is done
-                self.session = CallSession(self.emit, test_wav=self.test_wav)
+                self.session = CallSession(self.emit, test_wav=self.test_wav, offline=self.offline)
                 self.session.start()
+                if self.report and not hasattr(self, "first_session_started"):
+                    self.first_session_started = self.session.started
 
     # -- Windows-only helpers ---------------------------------------------
     def hide_from_screen_share(self) -> None:
@@ -122,11 +131,35 @@ class CopilotApp:
     def on_loaded(self) -> None:
         self.hide_from_screen_share()
         threading.Thread(target=self.hotkey, daemon=True).start()
+        if self.report:
+            threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True}).start()
         if self.test_wav:
+            self.started_at = time.time()
             self.toggle()
 
+    # -- self-test (run by the release build on a real Windows/Mac machine) --
+    phase = "run"
+
+    def _finish_self_test(self, timed_out: bool = False) -> None:
+        """After the test call: check that switching off mid-start really stops
+        everything, then write the report and close the app."""
+        if self.phase != "run":
+            return
+        self.phase = "off-check"
+        if not timed_out:
+            self.session = None
+            self.toggle()            # on ...
+            time.sleep(0.3)
+            self.toggle()            # ... and off again while it is still starting
+            time.sleep(20)           # anything arriving now would be a bug
+        Path(self.report).write_text(json.dumps({
+            "timed_out": timed_out, "offline": self.offline, "started_at": self.started_at,
+            "session_started": getattr(self, "first_session_started", None), "events": self.recorded,
+        }, indent=1))
+        self.window.destroy()
+
     def run(self) -> None:
-        page = "panel.html" if copilot.has_key() else "setup.html"   # first launch asks for the key
+        page = "panel.html" if (copilot.has_key() or self.offline) else "setup.html"   # first launch asks for the key
         self.window = webview.create_window(
             "PBD Call Copilot", str(HERE / "ui" / page), js_api=Api(self),
             width=760, height=1000, min_size=(480, 600), background_color="#061D28",
@@ -137,4 +170,7 @@ class CopilotApp:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--test-wav", help="replay this .wav as if it were a live call")
-    CopilotApp(ap.parse_args().test_wav).run()
+    ap.add_argument("--self-test", metavar="REPORT", help="with --test-wav: record all events to REPORT and quit")
+    ap.add_argument("--no-claude", action="store_true", help="self-test audio and speech-to-text only")
+    a = ap.parse_args()
+    CopilotApp(a.test_wav, report=a.self_test, offline=a.no_claude).run()

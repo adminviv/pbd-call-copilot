@@ -26,7 +26,8 @@ header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:
 .sub{padding:10px 20px;display:flex;gap:18px;align-items:center;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
 .bars{display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle}
 .bars i{width:3px;background:var(--off);transform-origin:bottom}
-.live .bars i{background:var(--teal);animation:bar 1.2s ease-in-out infinite}
+.bars i{height:3px;transition:height .15s linear,background-color .2s}
+.live .bars i{background:var(--teal)}
 @keyframes bar{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
 .plain{margin:16px 20px 0;padding:14px 16px;background:var(--deep);border:1px solid var(--line);animation:fade .4s ease both}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
@@ -61,6 +62,10 @@ main{flex:1;overflow:auto;padding:16px 20px 20px;display:flex;flex-direction:col
 footer{padding:10px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
 footer button{border:none;background:none;color:var(--teal);font-size:12px;padding:8px 0}
 .err{color:var(--bad)}
+#notice{margin:12px 20px 0;padding:12px 14px;font-size:14px;line-height:1.45;border-left:4px solid var(--star);background:#2A2A1E;color:#F3E7B5;animation:fade .3s ease both}
+#notice.bad{border-left-color:var(--bad);background:#3A1F22;color:#F6C9C4}
+#heard{margin:10px 20px 0;font-size:13px;line-height:1.45;color:var(--muted);min-height:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#heard b{color:var(--body);font-weight:500}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -72,10 +77,12 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
   <button id="toggle" class="toggle" aria-pressed="false" title="Ctrl + Alt + P (Mac: Control + Option + P)"><span class="track"><span class="knob"></span></span><span id="state">Off</span></button>
 </header>
 <div class="sub" id="sub">
-  <span>You<span class="bars"><i style="height:5px"></i><i style="height:9px;animation-delay:.3s"></i><i style="height:6px;animation-delay:.15s"></i></span></span>
-  <span>Them<span class="bars"><i style="height:9px;animation-delay:.1s"></i><i style="height:14px;animation-delay:.4s"></i><i style="height:11px;animation-delay:.25s"></i></span></span>
+  <span>You<span class="bars" id="bars-Andrew"><i></i><i></i><i></i></span></span>
+  <span>Them<span class="bars" id="bars-Them"><i></i><i></i><i></i></span></span>
   <span class="grow"></span><span id="clock"></span><span id="sharenote">Hidden from screen share</span>
 </div>
+<div id="notice" role="alert" hidden></div>
+<div id="heard" aria-live="polite"></div>
 <div id="plainbox"></div>
 <main id="main">
   <div id="cards"><div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div></div>
@@ -103,7 +110,7 @@ setInterval(() => { if (!startedAt) { $("clock").textContent = ""; return; } con
 
 function render(){
   const box = $("cards");
-  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>Suggestions appear when the conversation gets going, about every minute.</div>' : '<div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div>'; return; }
+  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>The first suggestions appear about a minute into the conversation. The bars above move when it hears you and the other side.</div>' : '<div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div>'; return; }
   box.innerHTML = cards.map((c, i) => `
     <article class="card ${i === 0 ? "newest" : ""}" data-i="${i}">
       <div class="cmain">
@@ -126,10 +133,11 @@ window.onCopilotEvent = (e) => {
   if (e.type === "status"){
     if (e.state === "listening"){ setOn(true); if (e.model) $("model").textContent = "Transcribing with " + e.model; render(); }
     else if (e.state === "loading"){ $("state").textContent = "Starting…"; }
-    else if (e.state === "off"){ setOn(false); render(); }
+    else if (e.state === "off"){ setOn(false); render(); $("heard").textContent = ""; document.querySelectorAll(".bars i").forEach(b => b.style.height = "3px"); }
     else if (e.state === "skipped"){ $("model").textContent = `Skipped ${e.seconds}s of audio to keep up`; }
     else if (e.state === "saved"){ $("model").textContent = "Transcript saved on this computer"; }
   } else if (e.type === "line"){
+    $("heard").innerHTML = `Last heard · <b>${esc(e.speaker === "Andrew" ? "You" : "Them")}:</b> ${esc(e.text)}`;
     const d = document.createElement("div");
     d.innerHTML = `<span>${esc(e.speaker)}</span> ${esc(e.text)}`; $("transcript").appendChild(d);
   } else if (e.type === "suggestions"){
@@ -138,8 +146,13 @@ window.onCopilotEvent = (e) => {
     const incoming = (e.cards||[]).map(c => Object.assign({at: e.at}, c));
     if (incoming.length) cards = incoming.concat(cards).slice(0, 2);   // Andrew: 2 at a time
     render();
-  } else if (e.type === "error"){
-    $("model").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } else if (e.type === "error" || e.type === "warning"){
+    const n = $("notice"); n.textContent = e.message; n.className = e.type === "error" ? "bad" : ""; n.hidden = false;
+  } else if (e.type === "ok"){
+    $("notice").hidden = true;
+  } else if (e.type === "level"){
+    const bars = document.querySelectorAll(`#bars-${e.speaker} i`), h = Math.min(14, 3 + Math.round(e.level * 11));
+    bars.forEach((b, i) => b.style.height = Math.max(3, h - [3, 0, 2][i]) + "px");
   }
 };
 </script>

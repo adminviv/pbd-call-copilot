@@ -20,6 +20,8 @@ from typing import Callable, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # engine lives one folder up
 
 import copilot  # noqa: E402
+import knowledge  # noqa: E402
+import numpy as np  # noqa: E402
 from audio import FileSource, MacMicSource, MacSystemSource, WindowsSource  # noqa: E402
 from transcriber import LiveTranscriber  # noqa: E402
 
@@ -27,13 +29,17 @@ SUGGEST_EVERY_S = 75      # how often a new stretch of conversation is analysed
 MIN_NEW_WORDS = 60        # skip if little was said since last time
 MAX_CARDS = 2             # Andrew: "2 sounds good"
 MAX_LAG_S = 20            # if speech-to-text falls this far behind, skip ahead to the present
+SILENT_WARN_S = 45        # warn if one side of the call has been silent this long
+HEARD_RMS = 0.006         # same threshold the transcriber uses for "someone is speaking"
 TRANSCRIPTS = Path.home() / "Documents" / "PBD Call Copilot" / "transcripts"
 
 
 class CallSession:
-    def __init__(self, events: Callable[[Dict], None], test_wav: Optional[str] = None):
+    def __init__(self, events: Callable[[Dict], None], test_wav: Optional[str] = None,
+                 offline: bool = False):
         self.events = events
         self.test_wav = test_wav
+        self.offline = offline   # self-test without Claude: audio + speech-to-text only
         self.lines: List[Dict] = []
         self.shown_asks: List[str] = []
         self.audio_q: "queue.Queue" = queue.Queue()
@@ -74,6 +80,11 @@ class CallSession:
     def _run(self) -> None:
         try:
             self.events({"type": "status", "state": "loading"})
+            problem = "" if self.offline else self._self_check()
+            if problem:   # say exactly what's wrong instead of "Listening" to nothing
+                self.events({"type": "error", "message": problem})
+                self.stop()
+                return
             tr = LiveTranscriber(self._on_line)
             with self.lock:
                 # Switched off while the speech model was loading: never start the microphone.
@@ -96,26 +107,78 @@ class CallSession:
             self.events({"type": "status", "state": "listening", "model": tr.model_name})
             if sys.platform == "darwin" and not self.test_wav:
                 threading.Thread(target=self._check_mac_permission, daemon=True).start()
-            threading.Thread(target=self._suggest_loop, daemon=True).start()
+            if not self.offline:
+                threading.Thread(target=self._suggest_loop, daemon=True).start()
+                threading.Thread(target=self._check_papers, daemon=True).start()
+            self.last_heard = {s.speaker: time.time() for s in self.sources}
+            warned = ""
             while self.running:
                 try:
                     chunk = self.audio_q.get(timeout=0.5)
                     lag = time.time() - self.started - chunk.t
                     if lag > MAX_LAG_S and not self.test_wav:
                         skipped = self._skip_to_now()
-                        self.events({"type": "status", "state": "skipped", "seconds": round(lag + skipped)})
+                        self.events({"type": "warning", "message":
+                                     f"This computer is transcribing slowly, so {round(lag + skipped)} s of audio "
+                                     "was skipped to stay live."})
                         continue
+                    rms = float(np.sqrt(np.mean(chunk.samples ** 2))) if len(chunk.samples) else 0.0
+                    self.events({"type": "level", "speaker": chunk.speaker, "level": min(1.0, (rms / 0.12) ** 0.5)})
+                    if rms >= HEARD_RMS:
+                        self.last_heard[chunk.speaker] = time.time()
+                    warned = self._check_hearing(warned)
                     tr.feed(chunk)
                 except queue.Empty:
                     if self.test_wav and not any(s.is_alive() for s in self.sources):
                         tr.flush_all()
-                        self._suggest_now(force=True)
+                        if not self.offline:
+                            self._suggest_now(force=True)
                         self.stop()
                         return
             # Switched off: drop any half-finished sentence rather than transcribe it.
         except Exception as e:  # surface, don't crash the window
             self.events({"type": "error", "message": f"{type(e).__name__}: {e}"})
             self.running = False
+
+    def _self_check(self) -> str:
+        """Before listening: can we reach Claude with this key? Returns a problem or ''."""
+        try:
+            copilot.get_client().models.list(limit=1)
+            return ""
+        except Exception as e:
+            name = type(e).__name__
+            if name in ("AuthenticationError", "PermissionDeniedError"):
+                return ("The PBD key on this computer was not accepted, so no suggestions can be made. "
+                        "Ask Genevieve for the current key.")
+            if name in ("APIConnectionError", "APITimeoutError"):
+                return "No internet connection. Suggestions need internet; check Wi-Fi and switch on again."
+            return f"Can't reach Claude right now ({name}). Try switching on again in a minute."
+
+    def _check_papers(self) -> None:
+        """Warn (don't stop) if no paper source works: cards would have no paper links."""
+        if knowledge.PEROXIOS_DB.exists() or knowledge.search_europepmc(["peroxisome"], limit=1):
+            return
+        self.events({"type": "warning", "message":
+                     "Can't reach the paper search, so suggestions may come without paper links."})
+
+    def _check_hearing(self, warned: str) -> str:
+        """Tell Andrew if one side of the call is silent, so 'Listening' is never misleading."""
+        if self.test_wav:
+            return warned
+        now = time.time()
+        quiet = [spk for spk, t in self.last_heard.items() if now - t > SILENT_WARN_S]
+        if quiet == ["Them"]:
+            msg = ("Not hearing the other side of the call. Is the call's sound playing on this computer "
+                   "(not on your phone)?")
+        elif quiet == ["Andrew"]:
+            msg = "Not hearing your microphone. Check the microphone in your computer's sound settings."
+        elif quiet:
+            msg = "Not hearing anything yet. Is the call running on this computer?"
+        else:
+            msg = ""
+        if msg != warned:
+            self.events({"type": "warning", "message": msg} if msg else {"type": "ok"})
+        return msg
 
     def _skip_to_now(self) -> float:
         """Drop queued audio so the panel stays live instead of building a backlog."""

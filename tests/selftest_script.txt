@@ -1,0 +1,10 @@
+R|Thanks for making time. Let me start with where our project is. We study how peroxisomes import their proteins. The receptor PEX5 binds cargo in the cytosol, carries it to the docking complex made of PEX13 and PEX14, and releases it inside the organelle.
+A|And after release, PEX5 has to come back out, right?
+R|Exactly. PEX5 gets a single ubiquitin from the ring ligases PEX2, PEX10 and PEX12. Then the motor formed by PEX1 and PEX6, which is an AAA ATPase, pulls it out of the membrane so it can be used again. If that recycling step fails, PEX5 gets stuck and import stops.
+A|That is the part we care about most. In Zellweger spectrum disorder many patients carry mutations in PEX1 or PEX6. Do you see the same stuck receptor in patient fibroblasts?
+R|We do. In fibroblasts with a common PEX1 mutation, PEX5 builds up on the membrane, and the cells lose catalase import. Plasmalogen levels drop, and very long chain fatty acids accumulate because beta oxidation inside the peroxisome slows down.
+A|Have you tried any small molecules that could stabilise the mutant PEX1 protein?
+R|We screened a library of approved drugs. A few compounds rescued import partially, measured with a green fluorescent reporter carrying the PTS1 signal. But the effect was modest, and we still need a functional readout, like actual beta oxidation flux, before we believe it.
+A|What would you need to take that screen to the next stage?
+R|Mainly better assays and more patient cell lines. We have three lines today. With ten or more covering different PEX1 and PEX6 variants, we could tell real rescue from noise. Funding for a postdoc for one year would make that possible.
+A|That fits closely with what we fund. Let us talk about a pilot and which cell lines we could help you get.

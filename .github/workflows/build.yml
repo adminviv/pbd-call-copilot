@@ -53,6 +53,40 @@ jobs:
           path: installer/PBD-Call-Copilot-Setup.exe
           retention-days: 3
 
+  selftest-windows:
+    # Installs the real Setup.exe on a clean Windows machine and plays a test call
+    # through the installed app. The release is blocked unless every check passes.
+    needs: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+      - name: Install like a user would (no admin)
+        shell: pwsh
+        run: |
+          Start-Process -FilePath .\PBD-Call-Copilot-Setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          if (-not (Test-Path "$env:LOCALAPPDATA\Programs\PBD Call Copilot\PBD Call Copilot.exe")) { throw "not installed" }
+      - name: Play the test call through the installed app
+        shell: pwsh
+        env:
+          PBD_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          $appArgs = @('--test-wav', "`"$pwd\tests\selftest.wav`"", '--self-test', "`"$pwd\report.json`"")
+          if ($env:PBD_KEY) { "ANTHROPIC_API_KEY=$env:PBD_KEY" | Out-File -Encoding ascii "$env:USERPROFILE\.pbd.env" }
+          else { $appArgs += '--no-claude'; Write-Host "No key secret: testing audio and speech-to-text only" }
+          $p = Start-Process -FilePath "$env:LOCALAPPDATA\Programs\PBD Call Copilot\PBD Call Copilot.exe" -ArgumentList $appArgs -PassThru
+          if (-not $p.WaitForExit(1200000)) { $p.Kill(); throw "app did not finish the test call" }
+      - name: Check the results
+        run: python tests/check_selftest.py report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-windows-report
+          path: report.json
+          retention-days: 14
+
   mac:
     strategy:
       matrix:
@@ -95,6 +129,17 @@ jobs:
           plutil -insert NSMicrophoneUsageDescription -string "PBD Call Copilot listens to your side of the call to suggest questions. Audio is never saved." "$PLIST"
           plutil -replace LSMinimumSystemVersion -string "13.0" "$PLIST"
           codesign --force --deep --sign - "dist/PBD Call Copilot.app"
+      - name: Play the test call through the built app
+        env:
+          PBD_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ARGS=(--test-wav "$PWD/tests/selftest.wav" --self-test "$PWD/report.json")
+          if [ -n "$PBD_KEY" ]; then echo "ANTHROPIC_API_KEY=$PBD_KEY" > ~/.pbd.env; else ARGS+=(--no-claude); fi
+          "dist/PBD Call Copilot.app/Contents/MacOS/PBD Call Copilot" "${ARGS[@]}" &
+          PID=$!; for i in $(seq 1 240); do kill -0 $PID 2>/dev/null || break; sleep 5; done
+          kill $PID 2>/dev/null || true
+          rm -f ~/.pbd.env
+          python tests/check_selftest.py report.json
       - name: Zip it
         run: ditto -c -k --keepParent "dist/PBD Call Copilot.app" "${{ matrix.zip }}"
       - uses: actions/upload-artifact@v4
@@ -104,7 +149,7 @@ jobs:
           retention-days: 3
 
   release:
-    needs: [windows, mac]
+    needs: [windows, selftest-windows, mac]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

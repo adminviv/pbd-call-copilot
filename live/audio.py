@@ -52,16 +52,38 @@ class WindowsSource(_Source):
     def run(self) -> None:
         import soundcard as sc  # Windows/WASAPI; imported here so tests run anywhere
 
-        if self.loopback:
-            device = sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True)
-        else:
-            device = sc.default_microphone()
+        if not self.loopback:
+            self._record(sc.default_microphone())
+            return
+        # The other side of the call: listen on EVERY speaker/headset, not just the
+        # default one. The most common "only hears one side" cause in similar apps is
+        # Zoom playing through a headset that isn't the Windows default. WASAPI
+        # loopback only delivers audio from a device that is actually playing, so
+        # idle devices add nothing.
+        threads = []
+        for spk in sc.all_speakers():
+            try:
+                dev = sc.get_microphone(id=str(spk.id), include_loopback=True)
+            except Exception:
+                continue
+            t = threading.Thread(target=self._record, args=(dev,), daemon=True)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+
+    def _record(self, device) -> None:
         frames = int(RATE * BLOCK_SECONDS)
-        with device.recorder(samplerate=RATE, channels=1, blocksize=frames) as rec:
-            while not self.stop_event.is_set():
-                data = rec.record(numframes=frames)
-                mono = data.mean(axis=1) if data.ndim > 1 else data
-                self.out.put(Chunk(self.speaker, mono.astype(np.float32), time.time() - self.t0))
+        try:
+            with device.recorder(samplerate=RATE, channels=1, blocksize=frames) as rec:
+                while not self.stop_event.is_set():
+                    data = rec.record(numframes=frames)
+                    mono = data.mean(axis=1) if data.ndim > 1 else data
+                    self.out.put(Chunk(self.speaker, mono.astype(np.float32), time.time() - self.t0))
+        except Exception:
+            if not self.loopback:
+                raise   # no microphone at all: let the session report it
+            # a headset was unplugged mid-call: the other devices keep listening
 
 
 class MacMicSource(_Source):

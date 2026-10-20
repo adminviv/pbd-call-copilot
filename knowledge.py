@@ -11,8 +11,11 @@ read-only mode so nothing here can ever modify them.
 """
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Dict, List
 
@@ -95,9 +98,50 @@ def search_pex10(terms: List[str], limit: int = 6) -> List[Dict]:
     return out
 
 
-def search_all(terms: List[str]) -> List[Dict]:
-    """Merge both sources, one entry per paper (PeroxiOS wins on duplicates)."""
+EUROPEPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+
+
+def _epmc_query(terms: List[str]) -> str:
+    """Same shape as the local search: words AND'ed within a term, terms OR'ed."""
+    groups = []
+    for term in terms:
+        words = [w for w in _clean(term).split() if len(w) > 1]
+        if words:
+            groups.append("(" + " AND ".join(f'"{w}"' for w in words) + ")")
+    return f"({' OR '.join(groups)}) AND IN_PMC:y AND SRC:MED" if groups else ""
+
+
+def search_europepmc(terms: List[str], limit: int = 10) -> List[Dict]:
+    """Papers from Europe PMC (free, public). Works on any computer with internet,
+    so a fresh install needs no private library. Every hit has a PMC ID, which
+    verify.py then checks against NCBI before a card can cite it."""
+    query = _epmc_query(terms)
+    if not query:
+        return []
+    url = EUROPEPMC + "?" + urllib.parse.urlencode(
+        {"query": query, "format": "json", "resultType": "core", "pageSize": limit})
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            results = json.load(resp).get("resultList", {}).get("result", [])
+    except Exception:
+        return []   # offline: the card writer simply gets fewer papers
+    out = []
+    for r in results:
+        if not r.get("pmcid") or not r.get("abstractText"):
+            continue
+        out.append({
+            "source": "Europe PMC", "pmcid": r["pmcid"], "pmid": r.get("pmid"), "doi": r.get("doi"),
+            "title": re.sub(r"<[^>]+>", "", r.get("title", "")).strip(),
+            "authors": r.get("authorString"), "year": r.get("pubYear"),
+            "text": re.sub(r"<[^>]+>", "", r["abstractText"])[:1500],
+        })
+    return out
+
+
+def search_all(terms: List[str], max_papers: int = 12) -> List[Dict]:
+    """Local libraries first (if this computer has them), then Europe PMC.
+    One entry per paper; local wins on duplicates."""
     merged: Dict[str, Dict] = {}
-    for hit in search_peroxios(terms) + search_pex10(terms):
+    for hit in search_peroxios(terms) + search_pex10(terms) + search_europepmc(terms):
         merged.setdefault(hit["pmcid"], hit)
-    return list(merged.values())
+    return list(merged.values())[:max_papers]
