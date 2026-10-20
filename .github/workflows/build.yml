@@ -136,16 +136,24 @@ jobs:
         run: |
           ARGS=(--test-wav "$PWD/tests/selftest.wav" --self-test "$PWD/report.json")
           if [ -n "$PBD_KEY" ]; then echo "ANTHROPIC_API_KEY=$PBD_KEY" > ~/.pbd.env; else ARGS+=(--no-claude); fi
-          "dist/PBD Call Copilot.app/Contents/MacOS/PBD Call Copilot" "${ARGS[@]}" &
+          "dist/PBD Call Copilot.app/Contents/MacOS/PBD Call Copilot" "${ARGS[@]}" > app.log 2>&1 &
           PID=$!; for i in $(seq 1 240); do kill -0 $PID 2>/dev/null || break; sleep 5; done
           kill $PID 2>/dev/null || true
           rm -f ~/.pbd.env
           python tests/check_selftest.py report.json
+      - name: Show the app's own output and any macOS crash report
+        if: failure()
+        run: |
+          echo "--- app.log"; tail -60 app.log || true
+          for f in $(ls -t ~/Library/Logs/DiagnosticReports/*PBD* 2>/dev/null | head -1); do
+            echo "--- $f"; head -120 "$f"; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: selftest-mac-${{ matrix.arch }}-report
-          path: report.json
+          path: |
+            report.json
+            app.log
           retention-days: 14
       - name: Zip it
         run: ditto -c -k --keepParent "dist/PBD Call Copilot.app" "${{ matrix.zip }}"

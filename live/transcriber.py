@@ -15,7 +15,7 @@ import numpy as np
 
 from audio import RATE, Chunk
 
-MAX_SEGMENT_S = 12.0
+MAX_SEGMENT_S = 8.0     # shorter pieces = text on screen sooner (was 12 s)
 SILENCE_RMS = 0.006      # below this a block counts as silence
 SILENCE_TO_FLUSH_S = 0.8
 
@@ -94,6 +94,10 @@ class LiveTranscriber:
         segments, _ = self.model.transcribe(
             audio, language="en", initial_prompt=self.prompt, beam_size=1,
             vad_filter=True, condition_on_previous_text=False,
+            # Never let one piece stall the call: no retry passes, and a hard cap on
+            # output length (8 s of speech is ~40 tokens). Without this, a piece the
+            # model loops on took 37 s instead of under 1 s.
+            temperature=0.0, max_new_tokens=96, without_timestamps=True,
         )
         text = " ".join(s.text.strip() for s in segments).strip()
         if text:
