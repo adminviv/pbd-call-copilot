@@ -95,7 +95,11 @@ class CopilotApp:
             if self.session and self.session.running:
                 self.session.stop()
                 self.session = None
-            elif copilot.has_key():   # not before first-run setup is done
+            elif not (copilot.has_key() or self.offline):
+                # never fail silently: say why nothing happens
+                self.emit({"type": "error", "message":
+                           "There is no PBD key on this computer, so it can't start. Ask Genevieve for the key."})
+            else:
                 self.session = CallSession(self.emit, test_wav=self.test_wav, offline=self.offline)
                 self.session.start()
                 if self.report and not hasattr(self, "first_session_started"):
