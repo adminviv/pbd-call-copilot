@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -206,9 +207,11 @@ def find_topic(window_text: str, recent_text: str) -> dict:
         "Earlier in the call (for context only):\n" + recent_text[-3000:] +
         "\n\nLatest stretch of the call:\n" + window_text +
         "\n\nName the topic of the latest stretch in under 12 words (plain words). In 'in_plain_words', "
-        "if the researcher said something technical, restate what they MEANT in 1-2 short sentences a "
-        "college graduate would follow (their meaning, not definitions); leave it empty if nothing "
-        "technical was said. Then give 3-6 "
+        "restate what was MEANT in the latest stretch in 1-2 short sentences a college graduate would "
+        "follow - usually the researcher's point; if Andrew did most of the talking, his. Paraphrase only: "
+        "copy any number exactly as said with its meaning unchanged ('15% less active' must not become "
+        "'15% as active'), and never add names, facts or background that were not said. Leave it empty "
+        "only for small talk. Then give 3-6 "
         "short literature search terms (1-3 words each, e.g. 'Cdc48 Ubx2', 'pexophagy') using correct scientific terms (fix transcription errors; "
         "prefer distinctive terms like protein names over generic words). Set worth_suggesting "
         "to false only for small talk, greetings, or scheduling. Funding, collaboration and career-plan "
@@ -235,7 +238,11 @@ def write_cards(window_text: str, topic: str, papers: List[Dict], already_shown:
         "to what the researcher just said. Prefer questions that clarify, pressure-test, or find the next "
         "step on a topic PBD cares about. Two kinds:\n"
         "- kind 'science': a question that clarifies or pressure-tests what the researcher said in light "
-        "of PBD's topics. Must be backed by one of the papers above (set pmcid).\n"
+        "of PBD's topics. Must be backed by one of the papers above (set pmcid). Write one ONLY when the "
+        "latest stretch is about biology or medicine AND the paper shares a specific gene, protein, assay, "
+        "disease or organism with what was just said. If the talk is about process, funding, people or "
+        "logistics, write no science card. Keep the question within the researcher's own field, as shown "
+        "by what they said.\n"
         "- kind 'next_step': a concrete move for PBD Project, phrased as a proposal or question, never a "
         "commitment - float a pilot experiment, ask whether PBD resources (patient cell lines, models, "
         "PeroxiOS, a support letter, funding) would help, ask what the researcher would need, or suggest "
@@ -247,6 +254,11 @@ def write_cards(window_text: str, topic: str, papers: List[Dict], already_shown:
         "words (an analogy is fine); empty list if there are none. "
         "'connection' names a person or lab worth connecting ONLY if that name appears verbatim in the "
         "call transcript or the paper text above; otherwise leave it empty. "
+        "Base every card on what was actually said in the latest stretch: never say 'your X' or 'you said' "
+        "about anything not in the transcript, and never present PBD background as something the "
+        "researcher said. Use a number only if it appears in the transcript or the cited paper, and then "
+        "say what it measured and what it is compared with; never use a patient-outcome number to argue "
+        "about a lab assay, and never describe durations, amounts or plans that nobody stated. "
         "Never invent facts about PBD Project beyond the context given. If nothing genuinely useful "
         "fits, return no cards - silence beats a weak "
         "or generic suggestion.",
@@ -296,7 +308,10 @@ def check_claims(window_text: str, cards: List[Dict], by_id: Dict[str, Dict]) ->
         "the cited passage is about something else; the 'ask' commits PBD money or resources or claims "
         "PBD has something; the 'ask' mentions the CEO's family; a 'connection' names someone "
         "not in the transcript or passage; the 'ask' uses scientist jargon a college graduate wouldn't "
-        "know without explaining it in 'terms'. General background any scientist would know is fine. Put the "
+        "know without explaining it in 'terms'; a number in 'ask' or 'why' is not in the passage or "
+        "transcript, or is quoted without what it measured; the card attributes to the researcher "
+        "something they did not say; a science card's paper shares no specific gene, protein, assay, "
+        "disease or organism with the transcript. General background any scientist would know is fine. Put the "
         "reason in 'problem' (empty string if supported).",
         CHECK_SCHEMA,
         effort="medium",
@@ -304,9 +319,28 @@ def check_claims(window_text: str, cards: List[Dict], by_id: Dict[str, Dict]) ->
     return verdicts
 
 
+_NUMBER = re.compile(r"(?<![A-Za-z0-9.:\-])\d+(?:\.\d+)?(?![A-Za-z0-9])")
+
+
+def _unsourced_numbers(text: str, sources: str) -> List[str]:
+    """Numbers in `text` (10+, decimals, or with %) that appear nowhere in `sources`.
+    Gene and protein names like PEX5, p97 or C26:0 are not counted as numbers."""
+    found = {round(float(f)) for f in _NUMBER.findall(sources)}   # "about 48%" may round 48.4%
+    out = []
+    for m in _NUMBER.finditer(text):
+        n = m.group(0)
+        small_whole = "." not in n and int(n) < 10 and not text[m.end():m.end() + 1] == "%"
+        if not small_whole and round(float(n)) not in found:
+            out.append(n)
+    return out
+
+
 def suggest(window_text: str, recent_text: str, already_shown: List[str]) -> Dict:
     topic = find_topic(window_text, recent_text)
-    result = {"topic": topic.get("topic"), "in_plain_words": topic.get("in_plain_words", ""), "search_terms": topic.get("search_terms", []), "cards": [], "dropped": []}
+    plain = topic.get("in_plain_words", "")
+    if _unsourced_numbers(plain, window_text + "\n" + recent_text):
+        plain = ""   # a summary that changed a number is worse than none; the topic still shows
+    result = {"topic": topic.get("topic"), "in_plain_words": plain, "search_terms": topic.get("search_terms", []), "cards": [], "dropped": []}
     if not topic.get("worth_suggesting"):
         return result
     papers = knowledge.search_all(topic.get("search_terms", []))
@@ -317,6 +351,11 @@ def suggest(window_text: str, recent_text: str, already_shown: List[str]) -> Dic
     for i, card in enumerate(drafted):
         if i in failed:
             result["dropped"].append({"card": card, "reason": "claim check: " + failed[i]})
+            continue
+        cited = by_id.get(card["pmcid"], {}).get("text", "") if card["pmcid"] else ""
+        stray = _unsourced_numbers(card["ask"] + " " + card["why"], window_text + "\n" + cited)
+        if stray:
+            result["dropped"].append({"card": card, "reason": "number not in call or paper: " + ", ".join(stray)})
             continue
         if not card["pmcid"]:
             if card["kind"] == "next_step":

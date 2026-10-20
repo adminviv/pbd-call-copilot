@@ -27,8 +27,10 @@ from transcriber import LiveTranscriber  # noqa: E402
 
 SUGGEST_EVERY_S = 75      # how often a new stretch of conversation is analysed
 MIN_NEW_WORDS = 60        # skip if little was said since last time
+MIN_THEM_WORDS = 60       # no cards until the other side has actually said something (not just hellos)
 MAX_CARDS = 2             # Andrew: "2 sounds good"
 MAX_LAG_S = 20            # if speech-to-text falls this far behind, skip ahead to the present
+SLOW_LAG_S = 8            # this far behind: switch to the faster speech model (once)
 SILENT_WARN_S = 45        # warn if one side of the call has been silent this long
 HEARD_RMS = 0.006         # same threshold the transcriber uses for "someone is speaking"
 TRANSCRIPTS = Path.home() / "Documents" / "PBD Call Copilot" / "transcripts"
@@ -116,6 +118,8 @@ class CallSession:
                 try:
                     chunk = self.audio_q.get(timeout=0.5)
                     lag = time.time() - self.started - chunk.t
+                    if lag > SLOW_LAG_S and tr.use_faster_model():
+                        self.events({"type": "status", "state": "listening", "model": tr.model_name})
                     if lag > MAX_LAG_S and not self.test_wav:
                         skipped = self._skip_to_now()
                         self.events({"type": "warning", "message":
@@ -207,7 +211,8 @@ class CallSession:
             new = self.lines[self.processed:]
             history = self.lines[:self.processed]
         words = sum(len(l["text"].split()) for l in new)
-        if not force and words < MIN_NEW_WORDS:
+        them = sum(len(l["text"].split()) for l in self.lines if l["speaker"] != "Andrew")
+        if not force and (words < MIN_NEW_WORDS or them < MIN_THEM_WORDS):
             return
         self.last_suggest_at = time.time()
         if not new:

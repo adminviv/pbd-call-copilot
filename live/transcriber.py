@@ -45,14 +45,26 @@ class LiveTranscriber:
         name, device, compute = pick_model()
         self.model_name = f"{name} ({device})"
         # Prefer a model shipped next to the app (no download on Andrew's PC).
-        root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))  # packaged app or source
-        local = root / "models" / f"faster-whisper-{name}"
+        self.root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))  # packaged app or source
+        local = self.root / "models" / f"faster-whisper-{name}"
         self.model = WhisperModel(str(local) if local.exists() else name, device=device, compute_type=compute)
+        self.compute = compute
         self.on_line = on_line
         self.prompt = VOCAB + (" " + extra_vocab if extra_vocab else "")
         self.buffers: Dict[str, List[np.ndarray]] = {}
         self.start_t: Dict[str, float] = {}
         self.silence: Dict[str, float] = {}
+
+    def use_faster_model(self) -> bool:
+        """Slow computer: swap to the smaller model shipped with the app (~1.5x faster,
+        slightly less accurate). Returns True if it switched."""
+        tiny = self.root / "models" / "faster-whisper-tiny.en"
+        if self.model_name.startswith("tiny") or not tiny.exists():
+            return False
+        from faster_whisper import WhisperModel
+        self.model = WhisperModel(str(tiny), device="cpu", compute_type=self.compute)
+        self.model_name = "tiny.en (cpu, faster for this computer)"
+        return True
 
     def feed(self, chunk: Chunk) -> None:
         spk = chunk.speaker

@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "live"))
 import copilot  # noqa: E402
-from session import MAX_CARDS, MIN_NEW_WORDS, SUGGEST_EVERY_S  # noqa: E402
+from session import MAX_CARDS, MIN_NEW_WORDS, MIN_THEM_WORDS, SUGGEST_EVERY_S  # noqa: E402
 
 LINE = re.compile(r"^\[(\d+):(\d+):(\d+)\] ([^:]+): (.*)$")
 STT_DELAY_S = 12   # measured: a spoken line reaches the transcript ~12 s later
@@ -62,7 +62,9 @@ def run(path: Path, out_dir: Path) -> dict:
         nonlocal now, last, processed
         available = [l for l in lines if l["t"] + STT_DELAY_S <= now]
         new, history = available[processed:], available[:processed]
-        if not new or (not force and sum(len(l["text"].split()) for l in new) < MIN_NEW_WORDS):
+        them = sum(len(l["text"].split()) for l in available if l["speaker"] != "Andrew")
+        if not new or (not force and (sum(len(l["text"].split()) for l in new) < MIN_NEW_WORDS
+                                      or them < MIN_THEM_WORDS)):
             return
         last = now
         processed += len(new)

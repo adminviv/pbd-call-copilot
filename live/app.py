@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -136,7 +137,9 @@ class CopilotApp:
         self.hide_from_screen_share()
         threading.Thread(target=self.hotkey, daemon=True).start()
         if self.report:
-            threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True}).start()
+            guard = threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True})
+            guard.daemon = True   # must not keep the app open after the test
+            guard.start()
         if self.test_wav:
             self.started_at = time.time()
             self.toggle()
@@ -161,6 +164,8 @@ class CopilotApp:
             "session_started": getattr(self, "first_session_started", None), "events": self.recorded,
         }, indent=1))
         self.window.destroy()
+        time.sleep(1)
+        os._exit(0)   # self-test only: quit even if a background thread is still busy
 
     def run(self) -> None:
         page = "panel.html" if (copilot.has_key() or self.offline) else "setup.html"   # first launch asks for the key
