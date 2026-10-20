@@ -24,6 +24,8 @@ def main(path: str) -> int:
     lags = [e["at"] - t0 - e["t"] for e in lines]
     heard = " ".join(e["text"] for e in lines).lower()
     suggestions = [e for e in run if e["type"] == "suggestions"]
+    leaked = [e for e in after if e["type"] in ("line", "suggestions") or e.get("state") == "listening"]
+    off_at = after[0]["at"] if after else 0
     cards = [c for e in suggestions for c in e.get("cards", [])]
 
     checks = [
@@ -38,8 +40,9 @@ def main(path: str) -> int:
         ("science words heard correctly", all(w in heard for w in MUST_HEAR),
          ", ".join("missing " + w for w in MUST_HEAR if w not in heard)),
         ("sound bars get real levels", any(e["type"] == "level" and e["level"] > 0.1 for e in run), ""),
-        ("off during start-up stops everything",
-         not [e for e in after if e["type"] in ("line", "suggestions") or e.get("state") == "listening"], ""),
+        ("off during start-up stops everything", not leaked,
+         "; ".join(f"{e['type']} {e.get('state') or e.get('text', '')[:40]} at +{e['at'] - off_at:.1f}s"
+                   for e in leaked)),
     ]
     if not r["offline"]:
         checks += [

@@ -89,6 +89,7 @@ jobs:
 
   mac:
     strategy:
+      fail-fast: false   # always see both Mac results
       matrix:
         include:
           - runner: macos-15          # Apple Silicon (M1 and newer)
@@ -140,6 +141,12 @@ jobs:
           kill $PID 2>/dev/null || true
           rm -f ~/.pbd.env
           python tests/check_selftest.py report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-mac-${{ matrix.arch }}-report
+          path: report.json
+          retention-days: 14
       - name: Zip it
         run: ditto -c -k --keepParent "dist/PBD Call Copilot.app" "${{ matrix.zip }}"
       - uses: actions/upload-artifact@v4
