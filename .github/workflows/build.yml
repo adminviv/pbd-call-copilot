@@ -41,6 +41,7 @@ jobs:
         run: >
           pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
           --paths . --paths live
+          --icon brand/app-icon.ico
           --add-data "live/ui;ui"
           --add-data "live/bundle;."
           --collect-all google_auth_oauthlib
@@ -131,6 +132,7 @@ jobs:
         run: >
           pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
           --osx-bundle-identifier org.pbdproject.callcopilot
+          --icon brand/app-icon.icns
           --paths . --paths live
           --add-data "live/ui:ui"
           --add-data "live/bundle:."

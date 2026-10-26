@@ -20,6 +20,7 @@ OutputBaseFilename=PBD-Call-Copilot-Setup
 Compression=lzma2/fast
 SolidCompression=no
 WizardStyle=modern
+SetupIconFile=..\brand\app-icon.ico
 UninstallDisplayIcon={app}\PBD Call Copilot.exe
 CloseApplications=yes
 
