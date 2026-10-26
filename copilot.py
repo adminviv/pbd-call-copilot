@@ -201,10 +201,11 @@ CARDS_SCHEMA = {
 }
 
 
-def find_topic(window_text: str, recent_text: str) -> dict:
+def find_topic(window_text: str, recent_text: str, meeting: str = "") -> dict:
     return _call(
         CONTEXT,
-        "Earlier in the call (for context only):\n" + recent_text[-3000:] +
+        (f"About this meeting (from the calendar):\n{meeting}\n" if meeting else "") +
+        "Earlier in the call (for context only):\n" + recent_text[-6000:] +
         "\n\nLatest stretch of the call:\n" + window_text +
         "\n\nName the topic of the latest stretch in under 12 words (plain words). In 'in_plain_words', "
         "restate what was MEANT in the latest stretch in 1-2 short sentences a college graduate would "
@@ -223,12 +224,14 @@ def find_topic(window_text: str, recent_text: str) -> dict:
     )
 
 
-def write_cards(window_text: str, topic: str, papers: List[Dict], already_shown: List[str]) -> List[Dict]:
+def write_cards(window_text: str, topic: str, papers: List[Dict], already_shown: List[str],
+                meeting: str = "") -> List[Dict]:
     sources = "\n\n".join(
         f"[{p['pmcid']}] {p['title']} ({p.get('source')})\n{p['text']}" for p in papers
     )
     return _call(
         CONTEXT,
+        (f"About this meeting (from the calendar):\n{meeting}\n" if meeting else "") +
         f"Current topic: {topic}\n\nLatest stretch of the call:\n{window_text}\n\n"
         f"Papers available (cite ONLY these, by the ID in brackets):\n{sources}\n\n"
         f"Questions already shown to Andrew: {json.dumps(already_shown)}\n"
@@ -342,8 +345,8 @@ def _unsourced_numbers(text: str, sources: str) -> List[str]:
     return out
 
 
-def suggest(window_text: str, recent_text: str, already_shown: List[str]) -> Dict:
-    topic = find_topic(window_text, recent_text)
+def suggest(window_text: str, recent_text: str, already_shown: List[str], meeting: str = "") -> Dict:
+    topic = find_topic(window_text, recent_text, meeting)
     plain = topic.get("in_plain_words", "")
     if _unsourced_numbers(plain, window_text + "\n" + recent_text):
         plain = ""   # a summary that changed a number is worse than none; the topic still shows
@@ -353,7 +356,7 @@ def suggest(window_text: str, recent_text: str, already_shown: List[str]) -> Dic
     papers = knowledge.search_all(topic.get("search_terms", []))
     result["papers_found"] = len(papers)
     by_id = {p["pmcid"]: p for p in papers}
-    drafted = write_cards(window_text, topic["topic"], papers, already_shown)
+    drafted = write_cards(window_text, topic["topic"], papers, already_shown, meeting)
     failed = {v["index"]: v["problem"] for v in check_claims(window_text, drafted, by_id) if not v["supported"]}
     for i, card in enumerate(drafted):
         if i in failed:

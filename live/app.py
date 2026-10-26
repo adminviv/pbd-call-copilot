@@ -44,6 +44,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 import copilot  # noqa: E402
+import gcal  # noqa: E402
 from session import CallSession  # noqa: E402
 
 IS_WINDOWS = sys.platform.startswith("win")
@@ -63,6 +64,22 @@ class Api:
     def star(self, ask: str):
         self._app.starred.append(ask)
 
+    def sign_in(self) -> dict:
+        """Google sign-in (calendar, read-only) in the browser; returns the result for the panel."""
+        try:
+            email = gcal.sign_in()
+        except Exception as e:
+            return {"ok": False, "message": f"Sign-in didn't finish: {e}"}
+        self._app.refresh_meetings()
+        return {"ok": True, "email": email}
+
+    def sign_out(self) -> None:
+        gcal.sign_out()
+        self._app.refresh_meetings()
+
+    def refresh_meetings(self) -> None:
+        self._app.refresh_meetings()
+
     def save_key(self, key: str) -> str:
         err = copilot.save_key(key)
         if not err:
@@ -80,6 +97,8 @@ class CopilotApp:
         self.window = None
         self.starred = []
         self.toggle_lock = threading.Lock()
+        self.meetings = []            # from the signed-in Google calendar(s)
+        self.meetings_lock = threading.Lock()
         self.ui_lock = threading.Lock()
         self.ui_ready = False
         self.ui_backlog = []
@@ -122,11 +141,50 @@ class CopilotApp:
                 # never fail silently: say why nothing happens
                 self.emit({"type": "error", "message":
                            "There is no PBD key on this computer, so it can't start. Ask Genevieve for the key."})
+            elif not self.test_wav and not self.current_meeting():
+                self.emit({"type": "error", "message": self.why_no_meeting()})
             else:
-                self.session = CallSession(self.emit, test_wav=self.test_wav, offline=self.offline)
+                meeting = gcal.meeting_context(self.current_meeting()) if not self.test_wav else ""
+                self.session = CallSession(self.emit, test_wav=self.test_wav, offline=self.offline,
+                                           meeting=meeting)
                 self.session.start()
                 if self.report and not hasattr(self, "first_session_started"):
                     self.first_session_started = self.session.started
+
+    # -- calendar: the switch only works during a confirmed meeting ----------
+    def current_meeting(self):
+        with self.meetings_lock:
+            return gcal.active_meeting(self.meetings)
+
+    def why_no_meeting(self) -> str:
+        if not gcal.client_config():
+            return "Calendar sign-in isn't set up in this version of the app. Ask Genevieve for the latest version."
+        if not gcal.TOKEN.exists():
+            return "Sign in with Google first, so the Copilot can see your meetings."
+        return ("No confirmed meeting right now. The Copilot works during confirmed meetings on your "
+                "calendar, from 10 minutes before the start to 15 minutes after the end.")
+
+    def refresh_meetings(self) -> None:
+        """Reload the calendar and tell the panel; switch off if the meeting has ended."""
+        try:
+            email = gcal.signed_in_email()
+            items = gcal.fetch_events() if email else []
+            error = ""
+        except Exception as e:
+            email, items, error = gcal.signed_in_email(), [], f"Couldn't load your calendar: {type(e).__name__}"
+        with self.meetings_lock:
+            self.meetings = items
+        active = self.current_meeting()
+        self.emit({"type": "meetings", "configured": bool(gcal.client_config()), "account": email or "",
+                   "items": items, "active": active["id"] if active else "", "error": error})
+        if not self.test_wav and self.session and self.session.running and not active:
+            self.toggle()   # the confirmed meeting's window closed: stop listening
+            self.emit({"type": "warning", "message": "The meeting has ended, so the Copilot switched off."})
+
+    def watch_calendar(self) -> None:
+        while True:
+            self.refresh_meetings()
+            time.sleep(60)
 
     # -- Windows-only helpers ---------------------------------------------
     def hide_from_screen_share(self) -> None:
@@ -158,6 +216,8 @@ class CopilotApp:
     def on_loaded(self) -> None:
         self.hide_from_screen_share()
         threading.Thread(target=self.hotkey, daemon=True).start()
+        if not self.test_wav:
+            threading.Thread(target=self.watch_calendar, daemon=True).start()
         if self.report:
             guard = threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True})
             guard.daemon = True   # must not keep the app open after the test

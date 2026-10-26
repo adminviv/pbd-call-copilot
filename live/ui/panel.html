@@ -66,6 +66,26 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
 #notice.bad{border-left-color:var(--bad);background:#3A1F22;color:#F6C9C4}
 #heard{margin:10px 20px 0;font-size:13px;line-height:1.45;color:var(--muted);min-height:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #heard b{color:var(--body);font-weight:500}
+#meet{margin:12px 20px 0;border:1px solid var(--line);background:var(--deep)}
+#meet .mhead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+#meet .mhead b{color:var(--text);font-size:13px;font-weight:600;letter-spacing:.02em}
+#meet .mhead button,#meet .signin{border:1px solid var(--line);background:var(--card);color:var(--text);font-size:13px;padding:8px 12px}
+#meet .mhead button:hover,#meet .signin:hover{background:var(--card2)}
+#meet .signin{background:var(--teal2);border-color:var(--teal2);font-weight:600}
+#meet .signin:hover{background:#0c7480}
+#meet .mbody{padding:12px 14px;font-size:13px;color:var(--body);line-height:1.5}
+#meet ul{list-style:none;margin:0;padding:0;max-height:168px;overflow:auto}
+#meet li{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:baseline;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--body)}
+#meet li:last-child{border-bottom:none}
+#meet li .when{color:var(--muted);font-variant-numeric:tabular-nums}
+#meet li .what{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#meet li .tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+#meet li .tag.ok{color:var(--teal)}
+#meet li.now{background:rgba(27,177,187,.12);border-left:3px solid var(--teal);padding-left:11px}
+#meet li.now .tag{color:var(--teal);font-weight:700}
+#meet .group{padding:6px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--ink)}
+#meet details summary{cursor:pointer;padding:8px 14px;font-size:12px;color:var(--muted)}
+.toggle.nomeet{opacity:.55}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -81,11 +101,12 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
   <span>Them<span class="bars" id="bars-Them"><i></i><i></i><i></i></span></span>
   <span class="grow"></span><span id="clock"></span><span id="sharenote">Hidden from screen share</span>
 </div>
+<section id="meet" aria-label="Meetings"><div class="mbody">Loading your meetings…</div></section>
 <div id="notice" role="alert" hidden></div>
 <div id="heard" aria-live="polite"></div>
 <div id="plainbox"></div>
 <main id="main">
-  <div id="cards"><div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div></div>
+  <div id="cards"><div class="empty"><b>Ready</b>Off. During a confirmed meeting, press Ctrl + Alt + P or click the switch to start listening.</div></div>
   <div id="transcript"></div>
 </main>
 <footer><span id="saved">0 saved for follow-up</span><span id="model"></span><button id="txbtn" type="button">Show transcript</button></footer>
@@ -110,7 +131,7 @@ setInterval(() => { if (!startedAt) { $("clock").textContent = ""; return; } con
 
 function render(){
   const box = $("cards");
-  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>The first suggestions appear about a minute into the conversation. The bars above move when it hears you and the other side.</div>' : '<div class="empty"><b>Ready</b>Off. Press Ctrl + Alt + P, or click the switch, to start listening.</div>'; return; }
+  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>The first suggestions appear about a minute into the conversation. The bars above move when it hears you and the other side.</div>' : '<div class="empty"><b>Ready</b>Off. During a confirmed meeting, press Ctrl + Alt + P or click the switch to start listening.</div>'; return; }
   box.innerHTML = cards.map((c, i) => `
     <article class="card ${i === 0 ? "newest" : ""}" data-i="${i}">
       <div class="cmain">
@@ -128,6 +149,40 @@ function render(){
 }
 function star(i){ const a = cards[i].ask; starred = starred.includes(a) ? starred.filter(x => x !== a) : starred.concat(a); $("saved").textContent = `${starred.length} saved for follow-up`; api() && api().star(a); render(); }
 function dismiss(i){ const el = document.querySelector(`[data-i="${i}"]`); if (el) el.classList.add("leaving"); setTimeout(() => { cards.splice(i, 1); render(); }, 320); }
+
+
+// -- meetings from the signed-in Google calendar ------------------------------
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+const fmtDay = (iso) => { const d = new Date(iso), t = new Date(); const same = (a, b) => a.toDateString() === b.toDateString();
+  const y = new Date(t); y.setDate(t.getDate() - 1); const n = new Date(t); n.setDate(t.getDate() + 1);
+  return same(d, t) ? "Today" : same(d, y) ? "Yesterday" : same(d, n) ? "Tomorrow" : d.toLocaleDateString([], {weekday: "short", month: "short", day: "numeric"}); };
+function meetRow(m, active){
+  const tag = m.id === active ? "Now" : m.confirmed ? "Confirmed" : esc(m.why_not);
+  return `<li class="${m.id === active ? "now" : ""}" title="${esc(m.calendar)}"><span class="when">${fmtDay(m.start)} ${fmtTime(m.start)}</span><span class="what">${esc(m.title)}</span><span class="tag ${m.confirmed ? "ok" : ""}">${tag}</span></li>`;
+}
+async function signIn(btn){
+  btn.disabled = true; btn.textContent = "Finish signing in in your browser…";
+  const r = api() ? await api().sign_in() : {ok: false, message: "Not available here"};
+  if (!r.ok){ btn.disabled = false; btn.textContent = "Sign in with Google"; const n = $("notice"); n.textContent = r.message; n.className = "bad"; n.hidden = false; }
+}
+function renderMeetings(e){
+  const box = $("meet");
+  $("toggle").classList.toggle("nomeet", !e.active && !on);
+  if (!e.configured){ box.innerHTML = `<div class="mbody">Calendar sign-in isn't set up in this version of the app.</div>`; return; }
+  if (!e.account){
+    box.innerHTML = `<div class="mhead"><b>MEETINGS</b></div><div class="mbody">Sign in with Google to see your meetings. The Copilot only reads your calendar, never your email, and works during confirmed meetings.<div style="margin-top:10px"><button class="signin" type="button" onclick="signIn(this)">Sign in with Google</button></div></div>`;
+    return;
+  }
+  const now = Date.now(), items = e.items || [];
+  const current = items.filter(m => m.id === e.active);
+  const upcoming = items.filter(m => m.id !== e.active && new Date(m.start).getTime() > now).slice(0, 6);
+  const earlier = items.filter(m => m.id !== e.active && new Date(m.start).getTime() <= now).reverse().slice(0, 15);
+  let list = current.map(m => meetRow(m, e.active)).join("");
+  if (upcoming.length) list += `<li class="group" style="display:block">Upcoming</li>` + upcoming.map(m => meetRow(m, e.active)).join("");
+  if (!list) list = `<li style="display:block">No meetings in the next 7 days.</li>`;
+  const past = earlier.length ? `<details><summary>Earlier meetings (${earlier.length})</summary><ul>${earlier.map(m => meetRow(m, e.active)).join("")}</ul></details>` : "";
+  box.innerHTML = `<div class="mhead"><b>MEETINGS</b><span>${esc(e.account)}</span><span class="grow"></span><button type="button" onclick="api() && api().refresh_meetings()">Refresh</button><button type="button" onclick="api() && api().sign_out()">Sign out</button></div><ul>${list}</ul>${past}` + (e.error ? `<div class="mbody" style="color:var(--bad)">${esc(e.error)}</div>` : "");
+}
 
 window.onCopilotEvent = (e) => {
   if (e.type === "status"){
@@ -150,6 +205,8 @@ window.onCopilotEvent = (e) => {
     const n = $("notice"); n.textContent = e.message; n.className = e.type === "error" ? "bad" : ""; n.hidden = false;
   } else if (e.type === "ok"){
     $("notice").hidden = true;
+  } else if (e.type === "meetings"){
+    renderMeetings(e);
   } else if (e.type === "level"){
     const bars = document.querySelectorAll(`#bars-${e.speaker} i`), h = Math.min(14, 3 + Math.round(e.level * 11));
     bars.forEach((b, i) => b.style.height = Math.max(3, h - [3, 0, 2][i]) + "px");

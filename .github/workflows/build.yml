@@ -27,14 +27,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r live/requirements.txt pyinstaller
+      - name: Check the confirmed-meeting rule
+        run: python tests/test_gcal.py
       - name: Download the speech model
         shell: bash
         run: ./.github/get-model.sh
+      - name: Add the Google sign-in client (calendar, read-only)
+        shell: bash
+        env:
+          GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
+        run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
       - name: Build the app
         run: >
           pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
           --paths . --paths live
           --add-data "live/ui;ui"
+          --add-data "live/bundle;."
+          --collect-all google_auth_oauthlib
           --add-data "models;models"
           --collect-all faster_whisper --collect-all ctranslate2
           --collect-all webview --collect-all soundcard
@@ -108,8 +117,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r live/requirements.txt pyinstaller
+      - name: Check the confirmed-meeting rule
+        run: python tests/test_gcal.py
       - name: Download the speech model
         run: ./.github/get-model.sh
+      - name: Add the Google sign-in client (calendar, read-only)
+        env:
+          GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
+        run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
       - name: Build the system-audio helper (ScreenCaptureKit)
         run: swiftc -O -target ${{ matrix.arch }}-apple-macos13.0 -o live/mac/pbd-syscap live/mac/syscap.swift
       - name: Build the app
@@ -118,6 +133,8 @@ jobs:
           --osx-bundle-identifier org.pbdproject.callcopilot
           --paths . --paths live
           --add-data "live/ui:ui"
+          --add-data "live/bundle:."
+          --collect-all google_auth_oauthlib
           --add-data "models:models"
           --add-binary "live/mac/pbd-syscap:mac"
           --collect-all faster_whisper --collect-all ctranslate2

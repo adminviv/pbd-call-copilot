@@ -38,8 +38,9 @@ TRANSCRIPTS = Path.home() / "Documents" / "PBD Call Copilot" / "transcripts"
 
 class CallSession:
     def __init__(self, events: Callable[[Dict], None], test_wav: Optional[str] = None,
-                 offline: bool = False):
+                 offline: bool = False, meeting: str = ""):
         self.events = events
+        self.meeting = meeting   # calendar details of the confirmed meeting (title, people, agenda)
         self.test_wav = test_wav
         self.offline = offline   # self-test without Claude: audio + speech-to-text only
         self.lines: List[Dict] = []
@@ -219,7 +220,7 @@ class CallSession:
             return
         self.processed += len(new)
         try:
-            res = copilot.suggest(_render(new), _render(history), self.shown_asks)
+            res = copilot.suggest(_render(new), _render(history), self.shown_asks, meeting=self.meeting)
         except Exception as e:
             self.events({"type": "error", "message": f"Suggestion step failed: {e}"})
             return

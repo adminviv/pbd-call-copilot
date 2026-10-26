@@ -14,3 +14,6 @@ build/
 .DS_Store
 live/mac/pbd-syscap
 !tests/selftest.wav
+google_client.json
+live/bundle/google_client.json
+google_token.json
