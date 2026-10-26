@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy – PBD Call Copilot</title>
+<meta name="description" content="How PBD Call Copilot handles calendar data, audio and call text.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #FFFFFF; --black: #1F212F; --teal: #04849E; --blue: #143575;
+    --lilac: #86A2DF; --green: #4DB3A7; --line: #DDE3EE; --soft: #F4F7FB;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--white); color: var(--black);
+         font: 400 17px/1.6 Roboto, system-ui, sans-serif; }
+  h1, h2, h3 { font-family: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", sans-serif; margin: 0; }
+  header { background: var(--blue); color: var(--white); padding: 18px 16px; }
+  header .wrap { display: flex; align-items: center; gap: 10px; font-weight: 500; letter-spacing: .02em; }
+  header img { height: 40px; width: auto; display: block; }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .hero { background: var(--blue); color: var(--white); padding: 40px 16px 64px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; }
+  .hero p { max-width: 600px; color: #D6DFF2; font-size: 19px; margin: 16px 0 28px; }
+  .btn { display: inline-block; background: var(--teal); color: var(--white); text-decoration: none;
+         font-weight: 500; padding: 15px 26px; transition: background .25s ease, transform .25s ease; }
+  .btn:hover { background: #036E84; transform: translateY(-1px); }
+  .meta { display: block; margin-top: 12px; font-size: 14px; color: var(--lilac); max-width: 640px; }
+  .meta strong { color: var(--white); font-weight: 500; }
+  .tabs { display: inline-flex; border: 1px solid rgba(255,255,255,.25); margin-bottom: 20px; }
+  .tabs button { font: 500 15px Roboto, sans-serif; color: #D6DFF2; background: transparent; border: 0;
+                 padding: 10px 22px; cursor: pointer; transition: background .25s ease, color .25s ease; }
+  .tabs button[aria-selected="true"] { background: var(--white); color: var(--blue); }
+  .tabs button:focus-visible, .btn:focus-visible { outline: 2px solid var(--lilac); outline-offset: 2px; }
+  .pane { animation: fade .35s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn.alt { background: transparent; border: 1px solid var(--teal); color: var(--white); }
+  .btn.alt:hover { background: rgba(4,132,158,.25); }
+  main { padding: 48px 16px 64px; }
+  section + section { margin-top: 48px; }
+  h2 { font-size: 26px; margin-bottom: 16px; }
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 40px 1fr; gap: 14px;
+                border: 1px solid var(--line); padding: 16px; }
+  ol.steps li::before { content: counter(s); background: var(--teal); color: var(--white);
+                        font-weight: 700; display: grid; place-items: center; height: 40px; }
+  code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: 15px; background: var(--soft);
+              padding: 2px 6px; border: 1px solid var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--soft); padding: 18px; border-left: 4px solid var(--teal); }
+  .card h3 { font-size: 18px; margin-bottom: 6px; }
+  .card p { margin: 0; font-size: 15px; }
+  footer { border-top: 1px solid var(--line); padding: 24px 16px; font-size: 14px; color: #5B6072; }
+  @media (prefers-reduced-motion: reduce) { .btn, .tabs button { transition: none; } .pane { animation: none; } }
+</style>
+<style>
+  .doc { padding: 40px 16px 64px; }
+  .doc h1 { font-size: clamp(28px, 5vw, 40px); margin-bottom: 6px; }
+  .doc .date { color: #5B6072; font-size: 14px; margin-bottom: 28px; }
+  .doc h2 { font-size: 21px; margin: 32px 0 10px; }
+  .doc p, .doc li { max-width: 720px; }
+  .doc ul { padding-left: 20px; }
+  .doc li { margin: 6px 0; }
+  .doc a { color: var(--teal); }
+  .doc strong { color: var(--black); }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="https://www.pbdproject.org"><img src="pbd-logo-white.png" alt="PBD Project"></a></div></header>
+<main class="wrap doc">
+<h1>Privacy policy</h1>
+<p class="date">PBD Call Copilot · Effective October 27, 2026</p>
+<p>PBD Call Copilot is a desktop app made by PBD Project, a nonprofit research accelerator for peroxisome science (pbdproject.org). During a video call, it listens on your computer and shows plain-language explanations and suggested questions. This policy explains what it accesses, where that information goes, and the choices you have.</p>
+
+<h2>What the app accesses</h2>
+<ul>
+  <li><strong>Your Google Calendar, read-only.</strong> When you sign in with Google, the app can read the calendars your account can see: event titles, times, attendees' names and email addresses, descriptions and video-call links. It also reads your email address, only to show which account is signed in. It cannot change your calendar and never accesses Gmail or any other Google data.</li>
+  <li><strong>Call audio, only while you switch it on.</strong> When you turn the Copilot on during a confirmed meeting, it hears your microphone and the sound your computer plays. Audio is turned into text on your computer. Audio is never saved and never sent anywhere.</li>
+</ul>
+
+<h2>How it uses that information</h2>
+<ul>
+  <li>Calendar events are used to list your meetings in the app, to allow the Copilot only during confirmed meetings, and to give the AI the meeting's title, attendee names and agenda so its explanations fit the meeting.</li>
+  <li>Text of the conversation (the latest stretch plus some earlier context) and the meeting details above are sent to Anthropic's Claude API to write the explanations and suggested questions.</li>
+  <li>Short search terms (a few science words) are sent to Europe PMC to find research papers, and paper IDs are sent to the US National Center for Biotechnology Information (NCBI) to confirm each paper exists.</li>
+</ul>
+
+<h2>What is stored, and where</h2>
+<ul>
+  <li><strong>On your computer only:</strong> your Google sign-in token, the app's access key, and a text transcript of each call in Documents\PBD Call Copilot\transcripts (Documents/PBD Call Copilot/transcripts on a Mac). You can delete these files at any time.</li>
+  <li><strong>PBD Project does not run a server</strong> for this app and does not receive copies of your calendar, audio or transcripts.</li>
+  <li>Text sent to Anthropic is handled under Anthropic's commercial API terms.</li>
+</ul>
+
+<h2>Google user data</h2>
+<p>PBD Call Copilot's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is used only to provide the features described above. It is not sold, not used for advertising, not used to develop, improve or train generalized AI models, and not shared with anyone except as described on this page to provide the app's features.</p>
+
+<h2>Your choices</h2>
+<ul>
+  <li>The Copilot never listens unless you switch it on, and you can switch it off at any time.</li>
+  <li>Sign out in the app to remove its access to your calendar, or remove it at any time from your Google Account under Security, Third-party apps with account access.</li>
+  <li>Delete saved transcripts from the folder named above.</li>
+</ul>
+
+<h2>Contact</h2>
+<p>Questions or requests: <a href="mailto:admin@pbdproject.org">admin@pbdproject.org</a>. If this policy changes, the new version will be posted on this page with a new effective date.</p>
+</main>
+<footer><div class="wrap">PBD Project · <a href="index.html">Download</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · admin@pbdproject.org</div></footer>
+</body>
+</html>

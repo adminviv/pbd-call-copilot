@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms of service – PBD Call Copilot</title>
+<meta name="description" content="Terms for using PBD Call Copilot.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #FFFFFF; --black: #1F212F; --teal: #04849E; --blue: #143575;
+    --lilac: #86A2DF; --green: #4DB3A7; --line: #DDE3EE; --soft: #F4F7FB;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--white); color: var(--black);
+         font: 400 17px/1.6 Roboto, system-ui, sans-serif; }
+  h1, h2, h3 { font-family: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", sans-serif; margin: 0; }
+  header { background: var(--blue); color: var(--white); padding: 18px 16px; }
+  header .wrap { display: flex; align-items: center; gap: 10px; font-weight: 500; letter-spacing: .02em; }
+  header img { height: 40px; width: auto; display: block; }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .hero { background: var(--blue); color: var(--white); padding: 40px 16px 64px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; }
+  .hero p { max-width: 600px; color: #D6DFF2; font-size: 19px; margin: 16px 0 28px; }
+  .btn { display: inline-block; background: var(--teal); color: var(--white); text-decoration: none;
+         font-weight: 500; padding: 15px 26px; transition: background .25s ease, transform .25s ease; }
+  .btn:hover { background: #036E84; transform: translateY(-1px); }
+  .meta { display: block; margin-top: 12px; font-size: 14px; color: var(--lilac); max-width: 640px; }
+  .meta strong { color: var(--white); font-weight: 500; }
+  .tabs { display: inline-flex; border: 1px solid rgba(255,255,255,.25); margin-bottom: 20px; }
+  .tabs button { font: 500 15px Roboto, sans-serif; color: #D6DFF2; background: transparent; border: 0;
+                 padding: 10px 22px; cursor: pointer; transition: background .25s ease, color .25s ease; }
+  .tabs button[aria-selected="true"] { background: var(--white); color: var(--blue); }
+  .tabs button:focus-visible, .btn:focus-visible { outline: 2px solid var(--lilac); outline-offset: 2px; }
+  .pane { animation: fade .35s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn.alt { background: transparent; border: 1px solid var(--teal); color: var(--white); }
+  .btn.alt:hover { background: rgba(4,132,158,.25); }
+  main { padding: 48px 16px 64px; }
+  section + section { margin-top: 48px; }
+  h2 { font-size: 26px; margin-bottom: 16px; }
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 40px 1fr; gap: 14px;
+                border: 1px solid var(--line); padding: 16px; }
+  ol.steps li::before { content: counter(s); background: var(--teal); color: var(--white);
+                        font-weight: 700; display: grid; place-items: center; height: 40px; }
+  code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: 15px; background: var(--soft);
+              padding: 2px 6px; border: 1px solid var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--soft); padding: 18px; border-left: 4px solid var(--teal); }
+  .card h3 { font-size: 18px; margin-bottom: 6px; }
+  .card p { margin: 0; font-size: 15px; }
+  footer { border-top: 1px solid var(--line); padding: 24px 16px; font-size: 14px; color: #5B6072; }
+  @media (prefers-reduced-motion: reduce) { .btn, .tabs button { transition: none; } .pane { animation: none; } }
+</style>
+<style>
+  .doc { padding: 40px 16px 64px; }
+  .doc h1 { font-size: clamp(28px, 5vw, 40px); margin-bottom: 6px; }
+  .doc .date { color: #5B6072; font-size: 14px; margin-bottom: 28px; }
+  .doc h2 { font-size: 21px; margin: 32px 0 10px; }
+  .doc p, .doc li { max-width: 720px; }
+  .doc ul { padding-left: 20px; }
+  .doc li { margin: 6px 0; }
+  .doc a { color: var(--teal); }
+  .doc strong { color: var(--black); }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="https://www.pbdproject.org"><img src="pbd-logo-white.png" alt="PBD Project"></a></div></header>
+<main class="wrap doc">
+<h1>Terms of service</h1>
+<p class="date">PBD Call Copilot · Effective October 27, 2026</p>
+<p>PBD Call Copilot is provided by PBD Project (pbdproject.org) to its team and invited collaborators. By installing or using it, you agree to these terms.</p>
+
+<h2>What the app does</h2>
+<p>During a video call that you switch it on for, the app shows plain-language explanations and suggested questions, with links to research papers. It works only during confirmed meetings on your Google Calendar.</p>
+
+<h2>Suggestions can be wrong</h2>
+<p>Explanations and questions are generated by AI and may be incomplete or incorrect. They are prompts to help you think, not facts, advice, or commitments made on behalf of PBD Project. Check anything important before you rely on it or repeat it.</p>
+
+<h2>Your responsibilities</h2>
+<ul>
+  <li>Use the app only on calls where you are allowed to. Where the law or the meeting's rules require it, tell the other participants that an assistant is transcribing the call, or get their consent.</li>
+  <li>Keep the app's access key private and do not share it.</li>
+  <li>Do not use the app to break the law or anyone's rights.</li>
+</ul>
+
+<h2>Privacy</h2>
+<p>How the app handles calendar data, audio and text is described in the <a href="privacy.html">privacy policy</a>.</p>
+
+<h2>No warranty</h2>
+<p>The app is provided free of charge and "as is", without warranties of any kind. To the extent the law allows, PBD Project is not liable for any loss arising from its use.</p>
+
+<h2>Changes</h2>
+<p>PBD Project may change or stop the app or these terms at any time. Updated terms will be posted on this page with a new effective date.</p>
+
+<h2>Contact</h2>
+<p><a href="mailto:admin@pbdproject.org">admin@pbdproject.org</a></p>
+</main>
+<footer><div class="wrap">PBD Project · <a href="index.html">Download</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · admin@pbdproject.org</div></footer>
+</body>
+</html>
