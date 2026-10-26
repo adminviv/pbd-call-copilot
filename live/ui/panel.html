@@ -109,7 +109,7 @@ footer button{border:none;background:none;color:var(--teal);font-size:12px;paddi
   <div id="cards"><div class="empty"><b>Ready</b>Off. During a confirmed meeting, press Ctrl + Alt + P or click the switch to start listening.</div></div>
   <div id="transcript"></div>
 </main>
-<footer><span id="saved">0 saved for follow-up</span><span id="model"></span><button id="txbtn" type="button">Show transcript</button></footer>
+<footer><span id="saved">0 saved for follow-up</span><span id="model"></span><span id="ver"></span><button id="txbtn" type="button">Show transcript</button></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -205,6 +205,8 @@ window.onCopilotEvent = (e) => {
     const n = $("notice"); n.textContent = e.message; n.className = e.type === "error" ? "bad" : ""; n.hidden = false;
   } else if (e.type === "ok"){
     $("notice").hidden = true;
+  } else if (e.type === "version"){
+    $("ver").textContent = "Version " + e.version;
   } else if (e.type === "meetings"){
     renderMeetings(e);
   } else if (e.type === "level"){

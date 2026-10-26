@@ -38,6 +38,33 @@ def _unblock_own_files() -> None:
 
 
 _unblock_own_files()
+
+
+def _start_log() -> None:
+    """A small log on this computer (~/.pbd-copilot/app.log) so failures are never silent.
+    It records what happened and every error, never the words of a call."""
+    import logging
+    import logging.handlers
+    import os
+    folder = Path.home() / ".pbd-copilot"
+    folder.mkdir(parents=True, exist_ok=True)
+    handler = logging.handlers.RotatingFileHandler(folder / "app.log", maxBytes=1_000_000, backupCount=1,
+                                                   encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(threadName)s %(message)s"))
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+    # Packaged windowed apps can have no console: printing must never crash a thread.
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
+    sys.excepthook = lambda t, v, tb: logging.critical("crash", exc_info=(t, v, tb))
+    threading.excepthook = lambda a: logging.error("background task failed: %s", a.thread.name if a.thread else "",
+                                                   exc_info=(a.exc_type, a.exc_value, a.exc_traceback))
+
+
+_start_log()
+import logging  # noqa: E402
+log = logging.getLogger("copilot")
 import webview  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -47,6 +74,7 @@ import copilot  # noqa: E402
 import gcal  # noqa: E402
 from session import CallSession  # noqa: E402
 
+APP_VERSION = "dev"   # the release build writes the real number here
 IS_WINDOWS = sys.platform.startswith("win")
 IS_MAC = sys.platform == "darwin"
 
@@ -105,6 +133,14 @@ class CopilotApp:
 
     # -- events from the session -> the panel ----------------------------
     def emit(self, event: dict) -> None:
+        kind = event.get("type")
+        if kind in ("status", "error", "warning", "ok"):
+            log.info("%s %s", kind, event.get("state") or event.get("message", ""))
+        elif kind == "meetings":
+            log.info("meetings: signed_in=%s count=%d active=%s error=%s", bool(event.get("account")),
+                     len(event.get("items", [])), bool(event.get("active")), event.get("error", ""))
+        elif kind == "suggestions":
+            log.info("suggestions: %d card(s)", len(event.get("cards", [])))
         if self.report:
             self.recorded.append({"at": time.time(), "phase": self.phase, **event})
             if event.get("type") == "status" and event.get("state") == "off" and self.phase == "run":
@@ -133,6 +169,7 @@ class CopilotApp:
 
     def toggle(self) -> None:
         """Only ever called by Andrew (switch or hotkey). On -> off works at any stage."""
+        log.info("switch pressed (currently %s)", "on" if self.session and self.session.running else "off")
         with self.toggle_lock:
             if self.session and self.session.running:
                 self.session.stop()
@@ -171,7 +208,8 @@ class CopilotApp:
             items = gcal.fetch_events() if email else []
             error = ""
         except Exception as e:
-            email, items, error = gcal.signed_in_email(), [], f"Couldn't load your calendar: {type(e).__name__}"
+            log.exception("loading the calendar failed")
+            email, items, error = None, [], f"Couldn't load your calendar: {type(e).__name__}"
         with self.meetings_lock:
             self.meetings = items
         active = self.current_meeting()
@@ -214,10 +252,17 @@ class CopilotApp:
         keyboard.GlobalHotKeys({"<ctrl>+<alt>+p": self.toggle}).run()
 
     def on_loaded(self) -> None:
-        self.hide_from_screen_share()
-        threading.Thread(target=self.hotkey, daemon=True).start()
-        if not self.test_wav:
-            threading.Thread(target=self.watch_calendar, daemon=True).start()
+        log.info("window ready (version %s)", APP_VERSION)
+        self.emit({"type": "version", "version": APP_VERSION})
+        # each start-up step on its own, so one failing can't silently stop the others
+        for step in (self.hide_from_screen_share,
+                     lambda: threading.Thread(target=self.hotkey, name="hotkey", daemon=True).start(),
+                     lambda: None if self.test_wav else
+                     threading.Thread(target=self.watch_calendar, name="calendar", daemon=True).start()):
+            try:
+                step()
+            except Exception:
+                log.exception("start-up step failed")
         if self.report:
             guard = threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True})
             guard.daemon = True   # must not keep the app open after the test
