@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import re
 import urllib.request
+
+import net
 from functools import lru_cache
 from typing import Optional
 
@@ -22,8 +24,7 @@ def ncbi_record(pmcid: str) -> Optional[dict]:
     if not num.isdigit():
         return None
     try:
-        with urllib.request.urlopen(ESUMMARY.format(num), timeout=15) as r:
-            data = json.load(r)
+        data = net.get(ESUMMARY.format(num), timeout=15)
     except Exception:
         return None
     rec = data.get("result", {}).get(num)

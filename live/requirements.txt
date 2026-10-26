@@ -5,6 +5,4 @@ numpy
 soundcard        # mic on both; speaker loopback on Windows (Mac uses mac/pbd-syscap)
 pywebview>=5     # the panel window (Edge WebView2 on Windows, WebKit on Mac)
 pynput           # Ctrl+Alt+P hotkey
-google-auth>=2.30           # Google sign-in (calendar, read-only)
-google-auth-oauthlib>=1.2
-requests
+certifi                       # certificate bundle for secure connections inside the packaged app

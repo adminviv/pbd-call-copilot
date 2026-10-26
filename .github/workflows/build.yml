@@ -47,7 +47,7 @@ jobs:
           --icon brand/app-icon.ico
           --add-data "live/ui;ui"
           --add-data "live/bundle;."
-          --collect-all google_auth_oauthlib
+          --hidden-import net --collect-data certifi
           --add-data "models;models"
           --collect-all faster_whisper --collect-all ctranslate2
           --collect-all webview --collect-all soundcard
@@ -142,7 +142,7 @@ jobs:
           --paths . --paths live
           --add-data "live/ui:ui"
           --add-data "live/bundle:."
-          --collect-all google_auth_oauthlib
+          --hidden-import net --collect-data certifi
           --add-data "models:models"
           --add-binary "live/mac/pbd-syscap:mac"
           --collect-all faster_whisper --collect-all ctranslate2

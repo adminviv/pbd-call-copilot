@@ -267,11 +267,21 @@ class CopilotApp:
             guard = threading.Timer(900, self._finish_self_test, kwargs={"timed_out": True})
             guard.daemon = True   # must not keep the app open after the test
             guard.start()
+        if self.report:
+            threading.Thread(target=self._report_connections, name="netcheck", daemon=True).start()
         if self.test_wav:
             self.started_at = time.time()
             self.toggle()
 
     # -- self-test (run by the release build on a real Windows/Mac machine) --
+    def _report_connections(self) -> None:
+        """Prove the PACKAGED app can make every secure connection it needs, and has its
+        Google sign-in client. (A packaging fault once broke all Google calls silently.)"""
+        import net
+        result = net.check()
+        result["calendar_client"] = bool(gcal.client_config())
+        self.emit({"type": "netcheck", **result})
+
     phase = "run"
 
     def _finish_self_test(self, timed_out: bool = False) -> None:

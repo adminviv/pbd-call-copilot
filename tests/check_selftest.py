@@ -29,6 +29,7 @@ def main(path: str) -> int:
     leaked = [e for e in after if e["at"] > off_at and
               (e["type"] in ("line", "suggestions") or e.get("state") == "listening")]
     cards = [c for e in suggestions for c in e.get("cards", [])]
+    netcheck = [e for e in r["events"] if e["type"] == "netcheck"]
 
     checks = [
         ("finished without timing out", not r["timed_out"], ""),
@@ -42,6 +43,10 @@ def main(path: str) -> int:
         ("science words heard correctly", all(w in heard for w in MUST_HEAR),
          ", ".join("missing " + w for w in MUST_HEAR if w not in heard)),
         ("sound bars get real levels", any(e["type"] == "level" and e["level"] > 0.1 for e in run), ""),
+        ("secure connections work (Google, Europe PMC, NCBI) and sign-in client is bundled",
+         bool(netcheck) and all(netcheck[0].get(k) for k in ("google", "europepmc", "ncbi", "calendar_client")),
+         ", ".join(k for k in ("google", "europepmc", "ncbi", "calendar_client")
+                   if not (netcheck and netcheck[0].get(k))) or ""),
         ("off during start-up stops everything", not leaked,
          "; ".join(f"{e['type']} {e.get('state') or e.get('text', '')[:40]} at +{e['at'] - off_at:.1f}s"
                    for e in leaked)),

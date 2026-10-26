@@ -34,7 +34,22 @@ VIDEO = re.compile(r"(zoom\.us/|zoomgov\.com/|teams\.microsoft\.com/|teams\.live
 API = "https://www.googleapis.com/calendar/v3"
 
 
-# -- sign-in -----------------------------------------------------------------
+# -- sign-in ---------------------------------------------------------------
+# Talks to Google directly with Python's standard library (see net.py): the
+# google-auth package drags in a compiled encryption library that broke in the
+# packaged Mac app ("Symbol not found: _SSL_get0_group_name").
+USERINFO = "https://openidconnect.googleapis.com/v1/userinfo"
+REVOKE = "https://oauth2.googleapis.com/revoke"
+
+
+def _net():
+    root = Path(__file__).resolve().parent.parent
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    import net
+    return net
+
+
 def client_config() -> Optional[dict]:
     """The app's Google sign-in client: bundled in the release build, or in the
     user folder while developing. None means calendar sign-in isn't set up."""
@@ -45,65 +60,127 @@ def client_config() -> Optional[dict]:
     return None
 
 
-def _credentials():
-    """Saved sign-in, refreshed if needed; None if not signed in."""
-    if not TOKEN.exists():
-        return None
-    from google.auth.transport.requests import Request
-    from google.oauth2.credentials import Credentials
-    try:
-        creds = Credentials.from_authorized_user_file(str(TOKEN), SCOPES)
-        if not creds.valid and creds.refresh_token:
-            creds.refresh(Request())
-            _save(creds)
-        return creds if creds.valid else None
-    except Exception:
-        return None   # revoked or damaged: the user simply signs in again
+def _client() -> dict:
+    cfg = client_config()
+    if not cfg:
+        raise RuntimeError("Calendar sign-in isn't set up in this version of the app.")
+    return cfg.get("installed") or cfg.get("web")
 
 
-def _save(creds) -> None:
+def _save(tok: dict) -> None:
     HOME.mkdir(parents=True, exist_ok=True)
-    TOKEN.write_text(creds.to_json())
+    TOKEN.write_text(json.dumps(tok))
     try:
         os.chmod(TOKEN, 0o600)
     except OSError:
         pass
 
 
-def sign_in() -> str:
+def _expiry(tok: dict) -> dt.datetime:
+    try:
+        e = tok.get("expiry", "").replace("Z", "+00:00")
+        t = dt.datetime.fromisoformat(e.split(".")[0] + ("+00:00" if "+" not in e else e[e.index("+"):]))
+        return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
+    except Exception:
+        return dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+
+
+def _access_token() -> Optional[str]:
+    """A valid access token, refreshed when needed; None if not signed in."""
+    if not TOKEN.exists():
+        return None
+    tok = json.loads(TOKEN.read_text())
+    if tok.get("token") and _expiry(tok) > dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=60):
+        return tok["token"]
+    if not tok.get("refresh_token"):
+        return None
+    c = _client()
+    net = _net()
+    try:
+        r = net.post(tok.get("token_uri") or c["token_uri"], form={
+            "grant_type": "refresh_token", "refresh_token": tok["refresh_token"],
+            "client_id": tok.get("client_id") or c["client_id"],
+            "client_secret": tok.get("client_secret") or c["client_secret"]})
+    except net.HTTPError as e:
+        if e.status in (400, 401):   # revoked or expired: sign in again
+            return None
+        raise
+    tok["token"] = r["access_token"]
+    tok["expiry"] = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=int(r.get("expires_in", 3600)))).isoformat()
+    _save(tok)
+    return tok["token"]
+
+
+def sign_in(timeout_s: int = 300) -> str:
     """Opens Google's sign-in page in the browser; returns the signed-in email."""
-    cfg = client_config()
-    if not cfg:
-        raise RuntimeError("Calendar sign-in isn't set up in this version of the app.")
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    flow = InstalledAppFlow.from_client_config(cfg, SCOPES)
-    creds = flow.run_local_server(
-        port=0, open_browser=True, prompt="select_account",
-        success_message="Signed in. You can close this tab and go back to PBD Call Copilot.")
-    _save(creds)
+    import base64
+    import hashlib
+    import secrets
+    import urllib.parse
+    import webbrowser
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    c = _client()
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    state = secrets.token_urlsafe(16)
+    got: Dict[str, str] = {}
+
+    class Reply(BaseHTTPRequestHandler):
+        def do_GET(self):
+            q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(self.path).query))
+            if q.get("state") == state:
+                got.update(q)
+            ok = "code" in got
+            msg = ("Signed in. You can close this tab and go back to PBD Call Copilot." if ok else
+                   "Sign-in was not completed. You can close this tab and try again in PBD Call Copilot.")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(f"<html><body style='font-family:sans-serif;padding:40px'><h2>{msg}</h2></body></html>".encode())
+
+        def log_message(self, *a):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Reply)
+    redirect = f"http://127.0.0.1:{server.server_port}/"
+    url = c["auth_uri"] + "?" + urllib.parse.urlencode({
+        "client_id": c["client_id"], "redirect_uri": redirect, "response_type": "code",
+        "scope": " ".join(SCOPES), "code_challenge": challenge, "code_challenge_method": "S256",
+        "state": state, "access_type": "offline", "prompt": "consent select_account"})
+    webbrowser.open(url)
+    server.timeout = 1
+    deadline = dt.datetime.now() + dt.timedelta(seconds=timeout_s)
+    while not got and dt.datetime.now() < deadline:
+        server.handle_request()
+    server.server_close()
+    if "code" not in got:
+        raise RuntimeError("Sign-in was cancelled or timed out." if not got.get("error") else got["error"])
+    r = _net().post(c["token_uri"], form={
+        "grant_type": "authorization_code", "code": got["code"], "redirect_uri": redirect,
+        "client_id": c["client_id"], "client_secret": c["client_secret"], "code_verifier": verifier})
+    _save({"token": r["access_token"], "refresh_token": r.get("refresh_token", ""),
+           "expiry": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=int(r.get("expires_in", 3600)))).isoformat(),
+           "token_uri": c["token_uri"], "client_id": c["client_id"], "client_secret": c["client_secret"],
+           "scopes": SCOPES})
     return signed_in_email() or ""
 
 
 def sign_out() -> None:
-    creds = _credentials()
-    if creds:
-        try:
-            from google.auth.transport.requests import AuthorizedSession
-            AuthorizedSession(creds).post("https://oauth2.googleapis.com/revoke",
-                                          params={"token": creds.token}, timeout=10)
-        except Exception:
-            pass
+    try:
+        tok = json.loads(TOKEN.read_text())
+        _net().post(REVOKE, form={"token": tok.get("refresh_token") or tok.get("token", "")})
+    except Exception:
+        pass
     TOKEN.unlink(missing_ok=True)
 
 
 def signed_in_email() -> Optional[str]:
-    creds = _credentials()
-    if not creds:
+    token = _access_token()
+    if not token:
         return None
-    from google.auth.transport.requests import AuthorizedSession
     try:
-        r = AuthorizedSession(creds).get("https://openidconnect.googleapis.com/v1/userinfo", timeout=10)
-        return r.json().get("email") if r.ok else None
+        return _net().get(USERINFO, token=token).get("email")
     except Exception:
         return None
 
@@ -112,24 +189,25 @@ def signed_in_email() -> Optional[str]:
 def fetch_events(now: Optional[dt.datetime] = None) -> List[Dict]:
     """Timed events from every visible calendar, 7 days back to 7 days ahead,
     one entry per meeting even when it sits on several calendars."""
-    creds = _credentials()
-    if not creds:
+    token = _access_token()
+    if not token:
         return []
-    from google.auth.transport.requests import AuthorizedSession
-    session = AuthorizedSession(creds)
+    import urllib.parse
+    net = _net()
     now = now or dt.datetime.now(dt.timezone.utc)
     lo = (now - dt.timedelta(days=LOOK_BACK_DAYS)).isoformat()
     hi = (now + dt.timedelta(days=LOOK_AHEAD_DAYS)).isoformat()
-    cals = session.get(f"{API}/users/me/calendarList", params={"minAccessRole": "reader"}, timeout=15).json()
+    cals = net.get(f"{API}/users/me/calendarList", params={"minAccessRole": "reader"}, token=token)
     merged: Dict[str, Dict] = {}
     for cal in cals.get("items", []):
         if cal.get("hidden") or cal.get("selected") is False:
             continue
-        r = session.get(f"{API}/calendars/{cal['id']}/events", timeout=15, params={
-            "timeMin": lo, "timeMax": hi, "singleEvents": "true", "orderBy": "startTime", "maxResults": 250})
-        if not r.ok:
+        try:
+            r = net.get(f"{API}/calendars/{urllib.parse.quote(cal['id'], safe='')}/events", token=token, params={
+                "timeMin": lo, "timeMax": hi, "singleEvents": "true", "orderBy": "startTime", "maxResults": 250})
+        except net.HTTPError:
             continue
-        for ev in r.json().get("items", []):
+        for ev in r.get("items", []):
             if "dateTime" not in ev.get("start", {}):
                 continue   # all-day items aren't calls
             item = summarize(ev, cal["id"], cal.get("summary", ""))

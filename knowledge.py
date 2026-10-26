@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, List
 
+import net
+
 import os
 
 # Andrew's PC can point this elsewhere with COPILOT_DATA; a missing source is skipped.
@@ -118,11 +120,9 @@ def search_europepmc(terms: List[str], limit: int = 10) -> List[Dict]:
     query = _epmc_query(terms)
     if not query:
         return []
-    url = EUROPEPMC + "?" + urllib.parse.urlencode(
-        {"query": query, "format": "json", "resultType": "core", "pageSize": limit})
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            results = json.load(resp).get("resultList", {}).get("result", [])
+        results = net.get(EUROPEPMC, params={"query": query, "format": "json", "resultType": "core",
+                                             "pageSize": limit}, timeout=10).get("resultList", {}).get("result", [])
     except Exception:
         return []   # offline: the card writer simply gets fewer papers
     out = []
