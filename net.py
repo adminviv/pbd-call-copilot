@@ -62,6 +62,8 @@ def check() -> Dict[str, bool]:
         try:
             get(url, timeout=20)
             results[name] = True
+        except HTTPError:
+            results[name] = True    # the server answered over a secure connection; it may just be busy
         except Exception:
-            results[name] = False
+            results[name] = False   # no secure connection at all (the packaging fault this guards against)
     return results
