@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: sed -i.bak 's/^APP_VERSION = "dev"/APP_VERSION = "1.0.${{ github.run_number }}"/' live/app.py && grep -n "^APP_VERSION" live/app.py
       - name: Check the confirmed-meeting rule
-        run: python tests/test_gcal.py
+        run: python tests/test_gcal.py && python tests/test_recordings.py
       - name: Download the speech model
         shell: bash
         run: ./.github/get-model.sh
@@ -47,7 +47,7 @@ jobs:
           --icon brand/app-icon.ico
           --add-data "live/ui;ui"
           --add-data "live/bundle;."
-          --hidden-import net --collect-data certifi
+          --hidden-import net --hidden-import recordings --collect-data certifi
           --add-data "models;models"
           --collect-all faster_whisper --collect-all ctranslate2
           --collect-all webview --collect-all soundcard
@@ -125,7 +125,7 @@ jobs:
         shell: bash
         run: sed -i.bak 's/^APP_VERSION = "dev"/APP_VERSION = "1.0.${{ github.run_number }}"/' live/app.py && grep -n "^APP_VERSION" live/app.py
       - name: Check the confirmed-meeting rule
-        run: python tests/test_gcal.py
+        run: python tests/test_gcal.py && python tests/test_recordings.py
       - name: Download the speech model
         run: ./.github/get-model.sh
       - name: Add the Google sign-in client (calendar, read-only)
@@ -142,7 +142,7 @@ jobs:
           --paths . --paths live
           --add-data "live/ui:ui"
           --add-data "live/bundle:."
-          --hidden-import net --collect-data certifi
+          --hidden-import net --hidden-import recordings --collect-data certifi
           --add-data "models:models"
           --add-binary "live/mac/pbd-syscap:mac"
           --collect-all faster_whisper --collect-all ctranslate2

@@ -2,218 +2,517 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PBD Call Copilot</title>
 <link href="fonts.css" rel="stylesheet">
 <style>
-:root{--ink:#061D28;--card:#0B2A38;--card2:#0E3342;--deep:#082532;--line:#1C4453;--text:#FFFFFF;--body:#C9DCE2;--muted:#8FB0BA;--teal:#1BB1BB;--teal2:#0F8795;--star:#E8D075;--off:#3A5663;--bad:#F09A92}
+:root{--bg:#F3F6FC;--card:#FFFFFF;--soft:#EDF2FC;--line:#E3E9F3;--line2:#C9D3E6;--text:#1F212F;--body:#3D4458;--muted:#5B6378;--teal:#036E84;--blue:#143575;--green:#2E7D73;--dot:#4DB3A7;--gold:#7A5C00;--star:#C9A227;--bad:#A3271B;
+  --btn:linear-gradient(135deg,#2A63B5 0%,#04849E 100%);--edge:linear-gradient(135deg,#86A2DF 0%,#1BB1BB 100%);
+  --tint:linear-gradient(135deg,#EDF2FC 0%,#E4F4F6 100%);--band:radial-gradient(380px 200px at 92% 0%,rgba(27,177,187,.22),transparent 70%),linear-gradient(120deg,#E6EEFC 0%,#E3F4F7 60%,#D6F0F2 100%);
+  --shadow:0 1px 2px rgba(20,53,117,.06),0 10px 28px rgba(20,53,117,.09)}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:var(--ink);color:var(--text);font-family:Roboto,"Segoe UI",system-ui,sans-serif;font-size:15px;display:flex;flex-direction:column;overflow:hidden}
+body{background:radial-gradient(700px 420px at 100% 40%,rgba(27,177,187,.12),transparent 65%),radial-gradient(600px 400px at 0% 100%,rgba(134,162,223,.16),transparent 65%),linear-gradient(180deg,#F3F6FC 0%,#FFFFFF 100%);color:var(--text);font:15px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;overflow:hidden}
 button{font-family:inherit;cursor:pointer}
-button:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
-.logo{height:30px;width:auto;display:block}
-.brand{display:flex;flex-direction:column;padding-left:12px;border-left:1px solid var(--line)}
-.brand b,.ask,.plain h2,.empty b{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif}
-.brand b{font-size:16px;letter-spacing:-.02em}
-.brand span{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #04849E;outline-offset:2px}
+.h{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif}
 .grow{flex:1}
-.toggle{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:14px;font-weight:600;transition:background-color .18s}
-.toggle:hover{background:var(--card2)}
-.track{width:38px;height:22px;background:var(--off);padding:3px;display:flex;transition:background-color .28s}
-.knob{width:16px;height:16px;background:#fff;transition:transform .32s cubic-bezier(.34,1.4,.5,1)}
-.on .track{background:var(--teal)} .on .knob{transform:translateX(16px)}
-.sub{padding:10px 20px;display:flex;gap:18px;align-items:center;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
-.bars{display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle}
-.bars i{width:3px;background:var(--off);transform-origin:bottom}
-.bars i{height:3px;transition:height .15s linear,background-color .2s}
-.live .bars i{background:var(--teal)}
-@keyframes bar{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
-.plain{margin:16px 20px 0;padding:14px 16px;background:var(--deep);border:1px solid var(--line);animation:fade .4s ease both}
-.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
-.plain p{margin:6px 0 0;font-size:15px;line-height:1.55;color:var(--body)}
-.plain h2{margin:4px 0 0;font-size:17px;letter-spacing:-.01em}
-main{flex:1;overflow:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
-.card{background:var(--card);border:1px solid var(--line);animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
-.card.newest{border-color:var(--teal);animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both,glow 1.8s ease-out .5s 1}
-.card.leaving{animation:cardOut .32s cubic-bezier(.4,0,.6,1) forwards}
-@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes cardOut{to{opacity:0;transform:translateX(16px);max-height:0;margin-top:-14px}}
-@keyframes glow{0%{box-shadow:0 0 0 0 rgba(27,177,187,.5)}100%{box-shadow:0 0 0 12px rgba(27,177,187,0)}}
+.view{height:100%;display:none;flex-direction:column}
+.view.shown{display:flex;animation:fade .25s ease both}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.cmain{padding:16px 16px 12px;display:flex;flex-direction:column;gap:10px}
-.kind{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.kind.next{color:var(--teal)}
-.ask{font-size:18px;font-weight:600;line-height:1.4;letter-spacing:-.01em}
-.why{font-size:14px;line-height:1.5;color:var(--body)} .why b{color:#fff}
-.terms{padding:10px 16px;border-top:1px solid var(--line);background:var(--deep);display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--body)}
-.terms b{color:#fff}
-.paper{display:block;padding:10px 16px;background:var(--card2);color:#fff;text-decoration:none;font-size:13px;line-height:1.4;transition:background-color .18s}
-.paper:hover{background:#12404F} .paper em{display:block;font-style:normal;color:var(--teal);font-size:12px;margin-top:3px}
+.scroll{flex:1;overflow:auto}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.edge{border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,var(--edge) border-box;box-shadow:var(--shadow)}
+.tint{background:var(--tint);border:1px solid #D8E3F0}
+.primary{display:inline-flex;align-items:center;gap:10px;height:48px;padding:0 22px;border:none;background:var(--btn);box-shadow:0 6px 16px rgba(4,132,158,.28);color:#fff;font-size:16px;font-weight:700}
+.primary:hover{filter:brightness(1.06)}
+.primary[disabled]{opacity:.6;cursor:default}
+.ghost{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;border:1px solid var(--line2);background:rgba(255,255,255,.85);color:var(--text);font-size:15px;font-weight:500}
+.ghost:hover{background:#fff}
+.band{display:flex;align-items:center;gap:14px;padding:16px 24px;background:var(--band);border-bottom:1px solid #D8E3F0;box-shadow:0 4px 18px rgba(20,53,117,.07)}
+.band .title{font-size:22px;font-weight:700}
+/* switch */
+.toggle{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid var(--line2);background:#fff;color:var(--text);font-size:15px;font-weight:600}
+.track{width:40px;height:22px;background:#B8C2D6;padding:3px;display:flex;transition:background-color .28s}
+.knob{width:16px;height:16px;background:#fff;transition:transform .32s cubic-bezier(.34,1.4,.5,1)}
+.toggle.on{background:var(--btn);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(4,132,158,.28)}
+.toggle.on .track{background:#fff} .toggle.on .knob{background:#037A91;transform:translateX(18px)}
+.toggle.nomeet{opacity:.6}
+/* notice */
+.notice{margin:14px 24px 0;padding:12px 16px;font-size:14px;line-height:1.45;background:linear-gradient(100deg,#FBF0C8 0%,#FFF9E6 100%);border:1px solid #EAD48A;color:#5C4500}
+.notice.bad{background:linear-gradient(100deg,#FBE3E0 0%,#FFF5F3 100%);border-color:#EBB3AC;color:var(--bad)}
+.notice.good{background:var(--tint);border-color:#B9DDE3;color:#0D4F5C}
+/* home */
+.hero{position:relative;padding:20px 24px 92px;background:radial-gradient(420px 260px at 90% 5%,rgba(27,177,187,.28),transparent 70%),radial-gradient(380px 240px at 0% 100%,rgba(134,162,223,.30),transparent 70%),linear-gradient(125deg,#E8EFFD 0%,#E4F4F7 60%,#D4EFF2 100%)}
+.hero svg.waves{position:absolute;left:0;top:0;width:100%;height:100%;opacity:.35;pointer-events:none}
+.hero header{position:relative;display:flex;align-items:center;gap:14px}
+.logo{height:32px;width:auto;display:block}
+.divider{width:1px;height:26px;background:var(--line2)}
+.greet{position:relative;margin-top:30px;display:flex;flex-direction:column;gap:4px}
+.greet .day{font-size:14px;color:var(--muted)}
+.greet .hi{font-size:32px;font-weight:700;letter-spacing:-.01em}
+.greet .sub{font-size:16px;color:var(--body)}
+.homebody{position:relative;margin-top:-66px;padding:0 24px 20px;display:flex;flex-direction:column;gap:18px}
+.now{padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 4px rgba(20,53,117,.08),0 22px 48px rgba(20,53,117,.16)}
+.now .tag{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--teal)}
+.livedot{width:10px;height:10px;background:var(--dot);box-shadow:0 0 0 4px rgba(77,179,167,.22)}
+.now .name{font-size:25px;font-weight:700;line-height:1.2}
+.now .meta{font-size:15px;color:var(--body)}
+.people{display:flex;gap:8px;flex-wrap:wrap}
+.person{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;background:linear-gradient(90deg,#E9EFFA,#E4F4F6);font-size:14px}
+.person i{font-style:normal;width:26px;height:26px;background:var(--btn);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.startrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px}
+.keys{font-size:14px;color:var(--muted)} .keys b{color:var(--text)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tile{display:flex;flex-direction:column;gap:8px;padding:20px;text-align:left;color:var(--text);font-size:15px;transition:transform .15s,box-shadow .15s}
+.tile:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(20,53,117,.08),0 16px 34px rgba(20,53,117,.14)}
+.tile.m{background:linear-gradient(160deg,#fff 40%,#EDF2FC 100%)} .tile.r{background:linear-gradient(160deg,#fff 40%,#E4F4F6 100%)}
+.tile .top{display:flex;justify-content:space-between;align-items:center}
+.badge{width:46px;height:46px;display:flex;align-items:center;justify-content:center}
+.tile.m .badge{background:linear-gradient(135deg,#3D6BC4 0%,#86A2DF 100%);box-shadow:0 6px 16px rgba(20,53,117,.25)}
+.tile.r .badge{background:linear-gradient(135deg,#04849E 0%,#1BB1BB 100%);box-shadow:0 6px 16px rgba(4,132,158,.28)}
+.tile .name{font-size:21px;font-weight:700}
+.tile .l1{color:var(--body)} .tile .l2{font-size:14px;color:var(--muted)} .tile .gold{color:var(--gold)}
+footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 24px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+/* live */
+.applogo{width:40px;height:40px;display:block}
+.livehead{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.livestate{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--green)}
+.livestate .livedot{width:9px;height:9px}
+.livetitle{font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.levels{display:flex;align-items:center;gap:20px;padding:10px 24px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);background:rgba(255,255,255,.6)}
+.bars{display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle}
+.bars i{width:3px;height:3px;background:#B8C2D6;transition:height .15s linear}
+.listening .bars i{background:linear-gradient(180deg,#1BB1BB,#143575)}
+.livebody{padding:16px 24px 20px;display:flex;flex-direction:column;gap:14px}
+#cards{display:flex;flex-direction:column;gap:14px}
+.plain{padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.plain .eyebrow{color:var(--teal)}
+.plain h2{margin:0;font-size:19px;line-height:1.3}
+.plain p{margin:0;font-size:15px;line-height:1.55;color:var(--body)}
+.sug{display:flex;flex-direction:column;animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
+.sug.leaving{animation:cardOut .32s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes cardOut{to{opacity:0;transform:translateX(16px)}}
+.cmain{padding:16px 18px 12px;display:flex;flex-direction:column;gap:8px}
+.kind{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.kind.next{color:var(--gold)}
+.ask{font-size:19px;font-weight:700;line-height:1.35}
+.why{font-size:15px;line-height:1.5;color:var(--body)} .why b{color:var(--text)}
+.terms{padding:10px 18px;background:#F3F6FB;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--body)}
+.terms b{color:var(--text)}
+.paper{display:flex;align-items:center;gap:10px;padding:11px 18px;background:linear-gradient(90deg,#E9EFFA 0%,#E3F4F6 100%);color:var(--text);text-decoration:none;font-size:14px;line-height:1.4}
+.paper:hover{filter:brightness(.98)}
+.paper span{flex:1} .paper em{font-style:normal;color:var(--green);font-weight:700;white-space:nowrap}
 .actions{display:flex;border-top:1px solid var(--line)}
-.actions button{height:44px;border:none;background:transparent;color:var(--muted);padding:0 14px;font-size:13px;transition:background-color .18s,color .18s}
-.actions button:hover{background:var(--card2);color:#fff}
-.actions .starred{color:var(--star)}
-.empty{margin:auto;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;max-width:36ch;animation:fade .4s ease both}
-.empty b{display:block;color:#fff;font-size:20px;margin-bottom:6px}
-#transcript{display:none;font-size:13px;line-height:1.55;color:var(--body)}
-#transcript div{padding:4px 0;border-bottom:1px solid var(--line)} #transcript span{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
-.showtx #transcript{display:block} .showtx #cards{display:none}
-footer{padding:10px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
-footer button{border:none;background:none;color:var(--teal);font-size:12px;padding:8px 0}
-.err{color:var(--bad)}
-#notice{margin:12px 20px 0;padding:12px 14px;font-size:14px;line-height:1.45;border-left:4px solid var(--star);background:#2A2A1E;color:#F3E7B5;animation:fade .3s ease both}
-#notice.bad{border-left-color:var(--bad);background:#3A1F22;color:#F6C9C4}
-#heard{margin:10px 20px 0;font-size:13px;line-height:1.45;color:var(--muted);min-height:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#heard b{color:var(--body);font-weight:500}
-#meet{margin:12px 20px 0;border:1px solid var(--line);background:var(--deep)}
-#meet .mhead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
-#meet .mhead b{color:var(--text);font-size:13px;font-weight:600;letter-spacing:.02em}
-#meet .mhead button,#meet .signin{border:1px solid var(--line);background:var(--card);color:var(--text);font-size:13px;padding:8px 12px}
-#meet .mhead button:hover,#meet .signin:hover{background:var(--card2)}
-#meet .signin{background:var(--teal2);border-color:var(--teal2);font-weight:600}
-#meet .signin:hover{background:#0c7480}
-#meet .mbody{padding:12px 14px;font-size:13px;color:var(--body);line-height:1.5}
-#meet ul{list-style:none;margin:0;padding:0;max-height:168px;overflow:auto}
-#meet li{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:baseline;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--body)}
-#meet li:last-child{border-bottom:none}
-#meet li .when{color:var(--muted);font-variant-numeric:tabular-nums}
-#meet li .what{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#meet li .tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-#meet li .tag.ok{color:var(--teal)}
-#meet li.now{background:rgba(27,177,187,.12);border-left:3px solid var(--teal);padding-left:11px}
-#meet li.now .tag{color:var(--teal);font-weight:700}
-#meet .group{padding:6px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--ink)}
-#meet details summary{cursor:pointer;padding:8px 14px;font-size:12px;color:var(--muted)}
-.toggle.nomeet{opacity:.55}
+.actions button{height:44px;border:none;background:transparent;color:var(--muted);padding:0 16px;font-size:14px;display:flex;align-items:center;gap:8px}
+.actions button:hover{background:#F3F6FB;color:var(--text)}
+.actions .starred{color:var(--gold)}
+.empty{margin:40px auto;text-align:center;color:var(--muted);font-size:15px;line-height:1.6;max-width:38ch}
+.empty b{display:block;color:var(--text);font-size:20px;margin-bottom:6px;font-family:"Atkinson Hyperlegible Next",sans-serif}
+#transcript{display:none;font-size:14px;line-height:1.55;color:var(--body);padding:4px 18px}
+#transcript div{padding:6px 0;border-bottom:1px solid var(--line)} #transcript span{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-right:6px}
+.showtx #transcript{display:block} .showtx #cards,.showtx #plainbox{display:none}
+.heard{padding:12px 24px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.7)}
+.heard div{font-size:15px;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:21px}
+.linkbtn{border:none;background:none;color:var(--teal);font-size:13px;padding:6px 0}
+/* meetings */
+.tabs{display:flex;padding:16px 24px 4px}
+.tabs button{height:40px;padding:0 20px;background:#fff;color:var(--body);border:1px solid var(--line2);font-size:15px}
+.tabs button+button{border-left:none}
+.tabs button.sel{background:var(--btn);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 6px 16px rgba(20,53,117,.2)}
+.list{padding:12px 24px 20px;display:flex;flex-direction:column;gap:10px}
+.group{margin-top:6px}
+.row{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:14px;align-items:center;padding:16px 18px;color:var(--text);text-align:left;font-size:15px}
+.row .t{display:flex;flex-direction:column} .row .t b{font-size:17px} .row .t span{font-size:13px;color:var(--muted)}
+.row .w{display:flex;flex-direction:column;gap:3px;min-width:0} .row .w b{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .row .w span{font-size:14px;color:var(--body)}
+.chip{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--teal);white-space:nowrap}
+.chip.go{padding:6px 12px;background:var(--btn);color:#fff}
+.chip.past{color:var(--muted)}
+details.other{border:1px solid #D8E3F0;background:var(--tint)}
+details.other summary{padding:14px 18px;font-size:14px;color:var(--body);cursor:pointer}
+details.other .o{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:14px;padding:10px 18px;border-top:1px solid #D8E3F0;font-size:14px;color:var(--muted)}
+.rules{display:flex;gap:12px;padding:14px 16px;font-size:14px;line-height:1.5;color:var(--body)}
+.signin-box{padding:22px;display:flex;flex-direction:column;gap:12px;font-size:15px;color:var(--body)}
+/* recordings */
+.search{display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;color:var(--muted)}
+.search input{flex:1;height:40px;border:none;background:transparent;font:15px Roboto,sans-serif;color:var(--text);outline:none}
+.followbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(100deg,#FBF0C8 0%,#FFF9E6 100%);border:1px solid #EAD48A;font-size:15px;color:#5C4500}
+.rec{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:16px 18px;text-align:left;color:var(--text);font-size:14px}
+.rec b{font-size:17px} .rec .d{color:var(--muted)} .rec .s{color:var(--body)} .rec .g{color:var(--gold);font-weight:700;font-size:13px} .rec .c{color:var(--muted);font-size:13px}
+.note{font-size:13px;color:var(--muted);text-align:center;padding:8px 0}
+.detail h1{margin:0;font-size:26px}
+.recap{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.recap ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;color:var(--body)}
+.saved{padding:16px 18px;background:linear-gradient(180deg,#FFFBEA 0%,#FFFFFF 70%);border:1px solid #E3C766;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+.cardrow{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 16px;font-size:15px;line-height:1.45}
+.cardrow .at{color:var(--muted)} .cardrow button{border:none;background:none;color:var(--muted);font-size:13px;padding:0}
+.cardrow button.starred{color:var(--gold)}
+details.tx{border:1px solid #D8E3F0;background:var(--tint)}
+details.tx summary{padding:14px 18px;font-size:15px;color:var(--body);cursor:pointer}
+details.tx div{padding:0 18px 14px;font-size:14px;line-height:1.6;color:var(--body);max-height:320px;overflow:auto;white-space:pre-wrap}
+@media (max-width:560px){.tiles{grid-template-columns:1fr}.row{grid-template-columns:80px minmax(0,1fr)}.row .chip{grid-column:2}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header>
-  <img class="logo" src="pbd-logo-white.png" alt="PBD Project">
-  <div class="brand"><b>Call Copilot</b></div>
-  <div class="grow"></div>
-  <button id="toggle" class="toggle" aria-pressed="false" title="Ctrl + Alt + P (Mac: Control + Option + P)"><span class="track"><span class="knob"></span></span><span id="state">Off</span></button>
-</header>
-<div class="sub" id="sub">
-  <span>You<span class="bars" id="bars-Andrew"><i></i><i></i><i></i></span></span>
-  <span>Them<span class="bars" id="bars-Them"><i></i><i></i><i></i></span></span>
-  <span class="grow"></span><span id="clock"></span><span id="sharenote">Hidden from screen share</span>
-</div>
-<section id="meet" aria-label="Meetings"><div class="mbody">Loading your meetings…</div></section>
-<div id="notice" role="alert" hidden></div>
-<div id="heard" aria-live="polite"></div>
-<div id="plainbox"></div>
-<main id="main">
-  <div id="cards"><div class="empty"><b>Ready</b>Off. During a confirmed meeting, press Ctrl + Alt + P or click the switch to start listening.</div></div>
-  <div id="transcript"></div>
-</main>
-<footer><span id="saved">0 saved for follow-up</span><span id="model"></span><span id="ver"></span><button id="txbtn" type="button">Show transcript</button></footer>
+
+<!-- 1 · Home -->
+<section class="view" id="v-home" aria-label="Home">
+  <div class="scroll">
+    <div class="hero">
+      <svg class="waves" viewBox="0 0 760 230" preserveAspectRatio="none" aria-hidden="true"><path d="M0 170 C 140 120, 260 210, 400 150 S 640 90, 760 130" fill="none" stroke="#86A2DF" stroke-width="1.5"/><path d="M0 195 C 160 150, 280 230, 420 175 S 650 120, 760 160" fill="none" stroke="#1BB1BB" stroke-width="1"/></svg>
+      <header>
+        <img class="logo" src="pbd-logo-blue.png" alt="PBD Project">
+        <div class="divider"></div>
+        <div class="h" style="font-size:19px;font-weight:700">Call Copilot</div>
+        <div class="grow"></div>
+        <button class="toggle" data-toggle aria-pressed="false" title="Ctrl + Alt + P"><span class="track"><span class="knob"></span></span><span data-state>Off</span></button>
+      </header>
+      <div class="greet">
+        <div class="day" id="today"></div>
+        <div class="hi h" id="hello">Hello</div>
+        <div class="sub" id="homesub">Loading your meetings…</div>
+      </div>
+    </div>
+    <div class="homebody">
+      <div id="homecard"></div>
+      <div class="notice" data-notice hidden></div>
+      <div class="tiles">
+        <button class="tile card m" type="button" onclick="go('meetings')">
+          <span class="top"><span class="badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6378" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+          <span class="name h">Meetings</span><span class="l1" id="tm1">–</span><span class="l2" id="tm2"></span>
+        </button>
+        <button class="tile card r" type="button" onclick="go('recs')">
+          <span class="top"><span class="badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6378" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+          <span class="name h">Recordings</span><span class="l1" id="tr1">No past calls yet</span><span class="l2 gold" id="tr2"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <footer><span data-ver>v1</span><span data-share>Hidden from screen share</span></footer>
+</section>
+
+<!-- 2 · Listening -->
+<section class="view" id="v-live" aria-label="Listening">
+  <div class="band">
+    <img class="applogo" src="app-logo.jpg" alt="PBD Call Copilot">
+    <div class="livehead">
+      <div class="livestate" id="livestate"><span class="livedot"></span><span id="livelabel">STARTING…</span></div>
+      <div class="livetitle h" id="livetitle">Call</div>
+    </div>
+    <button class="toggle" data-toggle aria-pressed="false" title="Ctrl + Alt + P"><span class="track"><span class="knob"></span></span><span data-state>Off</span></button>
+  </div>
+  <div class="levels" id="levels">
+    <span>You<span class="bars" id="bars-Andrew"><i></i><i></i><i></i></span></span>
+    <span>Them<span class="bars" id="bars-Them"><i></i><i></i><i></i></span></span>
+    <span class="grow"></span><span data-keys>Off any time: Ctrl + Alt + P</span>
+  </div>
+  <div class="notice" data-notice hidden></div>
+  <div class="scroll" id="livescroll">
+    <div class="livebody">
+      <div id="plainbox"></div>
+      <div id="cards"></div>
+      <div id="transcript" class="card"></div>
+    </div>
+  </div>
+  <div class="heard">
+    <div style="display:flex;align-items:center;justify-content:space-between"><span class="eyebrow" id="heardwho">Last heard</span><button class="linkbtn" id="txbtn" type="button">Show transcript</button></div>
+    <div id="heard"></div>
+  </div>
+</section>
+
+<!-- 3 · Meetings -->
+<section class="view" id="v-meetings" aria-label="Meetings">
+  <div class="band">
+    <button class="ghost" type="button" onclick="go('home')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Home</button>
+    <div class="title h">Meetings</div>
+    <div class="grow"></div>
+    <span id="account" style="font-size:13px;color:var(--body)"></span>
+    <button class="ghost" type="button" aria-label="Refresh meetings" title="Refresh" onclick="api() && api().refresh_meetings()" style="width:44px;padding:0;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist" id="tabs">
+    <button type="button" class="sel" data-tab="today">Today</button><button type="button" data-tab="upcoming">Upcoming</button><button type="button" data-tab="past">Past</button>
+  </div>
+  <div class="notice" data-notice hidden></div>
+  <div class="scroll"><div class="list" id="meetlist"></div></div>
+</section>
+
+<!-- 4 · Recordings -->
+<section class="view" id="v-recs" aria-label="Recordings">
+  <div class="band">
+    <button class="ghost" type="button" onclick="go('home')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Home</button>
+    <div class="title h">Recordings</div>
+  </div>
+  <div class="scroll"><div class="list">
+    <label class="search card"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search by person or topic" aria-label="Search past calls"></label>
+    <div id="reclist"></div>
+    <div class="note">Saved on this computer only. Audio is never recorded: each call keeps its transcript, cards and papers.</div>
+  </div></div>
+</section>
+
+<!-- 5 · A past call -->
+<section class="view" id="v-rec" aria-label="Past call">
+  <div class="band">
+    <button class="ghost" type="button" onclick="go('recs')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Recordings</button>
+    <div class="grow"></div>
+    <button class="primary" type="button" id="copybtn" style="height:44px;font-size:15px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12"/><path d="M16 4H4v12"/></svg>Copy notes</button>
+  </div>
+  <div class="scroll"><div class="list detail" id="recdetail"></div></div>
+</section>
 
 <script>
 const $ = (id) => document.getElementById(id);
+const all = (sel) => document.querySelectorAll(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let cards = [], starred = [], on = false, startedAt = null;
-
-// macOS doesn't reliably keep windows out of whole-screen shares.
-if (/Mac/.test(navigator.platform)) { $("sharenote").textContent = "Share one window, not your whole screen"; $("toggle").title = "Control + Option + P"; }
+const STAR = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.9 6.2.8-4.5 4.3 1.1 6.1L12 17.2 6.4 20.1l1.1-6.1L3 9.7l6.2-.8z"/></svg>';
+const DOC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#036E84" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>';
+let cards = [], starred = [], on = false, startedAt = null, meet = null, tab = "today", recs = [], openRec = null;
 function api(){ return (window.pywebview && window.pywebview.api) || null; }
-$("toggle").onclick = () => api() && api().toggle();
-$("txbtn").onclick = () => { document.body.classList.toggle("showtx"); $("txbtn").textContent = document.body.classList.contains("showtx") ? "Show suggestions" : "Show transcript"; };
+const isMac = /Mac/.test(navigator.platform);
+const KEYS = isMac ? "Control + Option + P" : "Ctrl + Alt + P";
+if (isMac) all("[data-share]").forEach(e => e.textContent = "Share one window, not your whole screen");
+all("[data-keys]").forEach(e => e.textContent = "Off any time: " + KEYS);
+all("[data-toggle]").forEach(b => { b.title = KEYS; b.onclick = () => api() && api().toggle(); });
 
+// -- views ------------------------------------------------------------------
+let view = "home";
+function go(v){
+  view = v; all(".view").forEach(s => s.classList.toggle("shown", s.id === "v-" + v));
+  if (v === "recs" || v === "home") loadRecs();
+}
+go("home");
+
+function notice(msg, kind){
+  all("[data-notice]").forEach(n => { n.hidden = !msg; n.textContent = msg || ""; n.className = "notice" + (kind ? " " + kind : ""); });
+}
+
+// -- the switch ---------------------------------------------------------------
 function setOn(v){
-  on = v; $("toggle").classList.toggle("on", v); $("toggle").setAttribute("aria-pressed", String(v));
-  $("state").textContent = v ? "Listening" : "Off"; $("sub").classList.toggle("live", v);
+  on = v;
+  all("[data-toggle]").forEach(b => { b.classList.toggle("on", v); b.setAttribute("aria-pressed", String(v)); });
+  all("[data-state]").forEach(s => s.textContent = v ? "On" : "Off");
+  $("levels").classList.toggle("listening", v);
   if (v && !startedAt) startedAt = Date.now(); if (!v) startedAt = null;
 }
-setInterval(() => { if (!startedAt) { $("clock").textContent = ""; return; } const s = Math.floor((Date.now()-startedAt)/1000); $("clock").textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; }, 1000);
+setInterval(() => {
+  if (!startedAt) return;
+  const s = Math.floor((Date.now() - startedAt) / 1000);
+  $("livelabel").textContent = `LISTENING · ${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+}, 1000);
+$("txbtn").onclick = () => { const v = $("v-live"); v.classList.toggle("showtx"); $("txbtn").textContent = v.classList.contains("showtx") ? "Show suggestions" : "Show transcript"; };
 
+// -- live cards ---------------------------------------------------------------
+function paperLink(p){
+  return p ? `<a class="paper" href="https://pubmed.ncbi.nlm.nih.gov/${esc(p.pmid)}/" target="_blank">${DOC}<span>${esc(p.title)} · ${esc(p.first_author)} et al. ${esc(p.year)}</span><em>Verified</em></a>` : "";
+}
 function render(){
   const box = $("cards");
-  if (!cards.length){ box.innerHTML = on ? '<div class="empty"><b>Listening</b>The first suggestions appear about a minute into the conversation. The bars above move when it hears you and the other side.</div>' : '<div class="empty"><b>Ready</b>Off. During a confirmed meeting, press Ctrl + Alt + P or click the switch to start listening.</div>'; return; }
+  if (!cards.length){
+    box.innerHTML = on ? '<div class="empty"><b>Listening</b>The first explanations and questions appear about a minute into the conversation. The bars above move when it hears you and the other side.</div>' : "";
+    return;
+  }
   box.innerHTML = cards.map((c, i) => `
-    <article class="card ${i === 0 ? "newest" : ""}" data-i="${i}">
+    <article class="sug ${i === 0 ? "edge" : "card"}" data-i="${i}">
       <div class="cmain">
-        <span class="kind ${c.kind === "next_step" ? "next" : ""}">${c.kind === "next_step" ? "Next step for PBD" : "Ask"} · ${esc(c.at)}</span>
-        <div class="ask">${esc(c.ask)}</div>
-        <div class="why"><b>What this means for PBD:</b> ${esc(c.why)}</div>
+        <span class="kind ${c.kind === "next_step" ? "next" : ""}">${c.kind === "next_step" ? "Next step" : "Ask · Science"} · ${esc(c.at)}</span>
+        <div class="ask h">${esc(c.ask)}</div>
+        <div class="why"><b>For PBD:</b> ${esc(c.why)}</div>
       </div>
-      ${(c.terms||[]).length ? `<div class="terms">${c.terms.map(t => `<span><b>${esc(t.term)}</b> = ${esc(t.plain)}</span>`).join("")}</div>` : ""}
-      ${c.paper ? `<a class="paper" href="https://pubmed.ncbi.nlm.nih.gov/${esc(c.paper.pmid)}/" target="_blank">${esc(c.paper.title)}<em>${esc(c.paper.first_author)} et al. ${esc(c.paper.year)} · ${esc(c.paper.journal)} · PMID ${esc(c.paper.pmid)} ✓</em></a>` : ""}
-      <div class="actions"><span class="grow"></span>
-        <button type="button" class="${starred.includes(c.ask) ? "starred" : ""}" onclick="star(${i})">${starred.includes(c.ask) ? "★ Saved" : "☆ Save for follow-up"}</button>
-        <button type="button" onclick="dismiss(${i})" aria-label="Dismiss">✕</button>
+      ${(c.terms||[]).length ? `<div class="terms">${c.terms.map(t => `<div><b>${esc(t.term)}</b> = ${esc(t.plain)}</div>`).join("")}</div>` : ""}
+      ${paperLink(c.paper)}
+      <div class="actions">
+        <button type="button" class="${starred.includes(c.ask) ? "starred" : ""}" onclick="star(${i})"><span style="fill:${starred.includes(c.ask) ? "#C9A227" : "none"};stroke:${starred.includes(c.ask) ? "#C9A227" : "currentColor"};stroke-width:2;display:flex">${STAR}</span>${starred.includes(c.ask) ? "Saved for follow-up" : "Save for follow-up"}</button>
+        <span class="grow"></span>
+        <button type="button" onclick="dismiss(${i})">Dismiss</button>
       </div>
     </article>`).join("");
 }
-function star(i){ const a = cards[i].ask; starred = starred.includes(a) ? starred.filter(x => x !== a) : starred.concat(a); $("saved").textContent = `${starred.length} saved for follow-up`; api() && api().star(a); render(); }
+function star(i){ const a = cards[i].ask; starred = starred.includes(a) ? starred.filter(x => x !== a) : starred.concat(a); api() && api().star(a); render(); }
 function dismiss(i){ const el = document.querySelector(`[data-i="${i}"]`); if (el) el.classList.add("leaving"); setTimeout(() => { cards.splice(i, 1); render(); }, 320); }
 
-
-// -- meetings from the signed-in Google calendar ------------------------------
+// -- meetings -----------------------------------------------------------------
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
-const fmtDay = (iso) => { const d = new Date(iso), t = new Date(); const same = (a, b) => a.toDateString() === b.toDateString();
-  const y = new Date(t); y.setDate(t.getDate() - 1); const n = new Date(t); n.setDate(t.getDate() + 1);
-  return same(d, t) ? "Today" : same(d, y) ? "Yesterday" : same(d, n) ? "Tomorrow" : d.toLocaleDateString([], {weekday: "short", month: "short", day: "numeric"}); };
-function meetRow(m, active){
-  const tag = m.id === active ? "Now" : m.confirmed ? "Confirmed" : esc(m.why_not);
-  return `<li class="${m.id === active ? "now" : ""}" title="${esc(m.calendar)}"><span class="when">${fmtDay(m.start)} ${fmtTime(m.start)}</span><span class="what">${esc(m.title)}</span><span class="tag ${m.confirmed ? "ok" : ""}">${tag}</span></li>`;
+const fmtDate = (iso) => new Date(iso).toLocaleDateString([], {weekday: "short", month: "short", day: "numeric"});
+const sameDay = (a, b) => a.toDateString() === b.toDateString();
+const initials = (n) => n.split(/[\s.]+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+function where(m){ return m.confirmed ? "" : m.why_not; }
+
+function greet(){
+  const h = new Date().getHours();
+  $("hello").textContent = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  $("today").textContent = new Date().toLocaleDateString([], {weekday: "long", month: "long", day: "numeric"});
 }
+greet(); setInterval(greet, 60000);
+
 async function signIn(btn){
   btn.disabled = true; btn.textContent = "Finish signing in in your browser…";
   const r = api() ? await api().sign_in() : {ok: false, message: "Not available here"};
-  if (!r.ok){ btn.disabled = false; btn.textContent = "Sign in with Google"; const n = $("notice"); n.textContent = r.message; n.className = "bad"; n.hidden = false; }
+  if (!r.ok){ btn.disabled = false; btn.textContent = "Sign in with Google"; notice(r.message, "bad"); }
 }
-function renderMeetings(e){
-  const box = $("meet");
-  $("toggle").classList.toggle("nomeet", !e.active && !on);
-  if (!e.configured){ box.innerHTML = `<div class="mbody">Calendar sign-in isn't set up in this version of the app.</div>`; return; }
-  if (!e.account){
-    box.innerHTML = `<div class="mhead"><b>MEETINGS</b></div><div class="mbody">Sign in with Google to see your meetings. The Copilot only reads your calendar, never your email, and works during confirmed meetings.<div style="margin-top:10px"><button class="signin" type="button" onclick="signIn(this)">Sign in with Google</button></div></div>`;
-    return;
+const signInBox = () => `<div class="card signin-box"><b class="h" style="font-size:20px;color:var(--text)">Connect your calendar</b>Sign in with Google so the Copilot can see your meetings. It only reads your calendar, never your email, and works only during confirmed meetings.<div><button class="primary" type="button" onclick="signIn(this)">Sign in with Google</button></div></div>`;
+
+function renderHome(){
+  const box = $("homecard");
+  if (!meet){ box.innerHTML = ""; return; }
+  if (!meet.configured){ box.innerHTML = `<div class="card signin-box">Calendar sign-in isn't set up in this version of the app. Ask Genevieve for the latest version.</div>`; $("homesub").textContent = ""; return; }
+  if (!meet.account){ box.innerHTML = signInBox(); $("homesub").textContent = "Connect your calendar to get started."; $("tm1").textContent = "Not connected"; $("tm2").textContent = ""; return; }
+  const now = new Date(), items = meet.items || [];
+  const today = items.filter(m => m.confirmed && sameDay(new Date(m.start), now));
+  const next = items.find(m => m.confirmed && m.id !== meet.active && new Date(m.start) > now);
+  const active = items.find(m => m.id === meet.active);
+  $("homesub").textContent = today.length ? `You have ${today.length} confirmed call${today.length > 1 ? "s" : ""} today.` : "No confirmed calls today.";
+  $("tm1").textContent = `${today.length} call${today.length === 1 ? "" : "s"} today`;
+  $("tm2").textContent = next ? `Next: ${next.title} · ${sameDay(new Date(next.start), now) ? "" : fmtDate(next.start) + ", "}${fmtTime(next.start)}` : "Nothing else coming up";
+  if (active){
+    const mins = Math.round((now - new Date(active.start)) / 60000);
+    box.innerHTML = `<section class="edge now" aria-label="Happening now">
+      <div class="tag"><span class="livedot"></span>${mins >= 0 ? `HAPPENING NOW · STARTED ${mins} MIN AGO` : `STARTS IN ${-mins} MIN`}</div>
+      <div class="name h">${esc(active.title)}</div>
+      <div class="meta">${fmtTime(active.start)} – ${fmtTime(active.end)}</div>
+      <div class="people">${active.attendees.slice(0, 4).map(n => `<span class="person"><i>${esc(initials(n))}</i>${esc(n)}</span>`).join("")}${active.attendees.length > 4 ? `<span class="person" style="padding-left:12px">+${active.attendees.length - 4} more</span>` : ""}</div>
+      <div class="startrow"><button class="primary" type="button" onclick="api() && api().toggle()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Start Copilot</button><span class="keys">or press <b>${KEYS}</b></span></div>
+    </section>`;
+  } else {
+    box.innerHTML = `<section class="card now"><div class="tag" style="color:var(--muted)">NO CALL RIGHT NOW</div>
+      <div class="name h">${next ? esc(next.title) : "You're all clear"}</div>
+      <div class="meta">${next ? `Next call ${sameDay(new Date(next.start), now) ? "today" : fmtDate(next.start)} at ${fmtTime(next.start)}. The switch works from 10 minutes before it starts.` : "No confirmed calls in the next 7 days."}</div></section>`;
   }
-  const now = Date.now(), items = e.items || [];
-  const current = items.filter(m => m.id === e.active);
-  const upcoming = items.filter(m => m.id !== e.active && new Date(m.start).getTime() > now).slice(0, 6);
-  const earlier = items.filter(m => m.id !== e.active && new Date(m.start).getTime() <= now).reverse().slice(0, 15);
-  let list = current.map(m => meetRow(m, e.active)).join("");
-  if (upcoming.length) list += `<li class="group" style="display:block">Upcoming</li>` + upcoming.map(m => meetRow(m, e.active)).join("");
-  if (!list) list = `<li style="display:block">No meetings in the next 7 days.</li>`;
-  const past = earlier.length ? `<details><summary>Earlier meetings (${earlier.length})</summary><ul>${earlier.map(m => meetRow(m, e.active)).join("")}</ul></details>` : "";
-  box.innerHTML = `<div class="mhead"><b>MEETINGS</b><span>${esc(e.account)}</span><span class="grow"></span><button type="button" onclick="api() && api().refresh_meetings()">Refresh</button><button type="button" onclick="api() && api().sign_out()">Sign out</button></div><ul>${list}</ul>${past}` + (e.error ? `<div class="mbody" style="color:var(--bad)">${esc(e.error)}</div>` : "");
 }
 
+function meetRow(m){
+  const isNow = m.id === meet.active, past = new Date(m.end) < new Date();
+  const chip = isNow ? `<span class="chip go">NOW · START</span>` : past ? `<span class="chip past">ENDED</span>` : `<span class="chip">CONFIRMED</span>`;
+  const people = m.attendees.length ? `${m.attendees.length + 1} people` : "";
+  const inner = `<span class="t"><b class="h">${fmtTime(m.start)}</b><span>to ${fmtTime(m.end)}</span></span><span class="w"><b class="h">${esc(m.title)}</b><span>${esc(people)}${m.calendar ? " · " + esc(m.calendar) : ""}</span></span>${chip}`;
+  return isNow ? `<button type="button" class="row edge" onclick="api() && api().toggle()">${inner}</button>` : `<div class="row card">${inner}</div>`;
+}
+function renderMeetings(){
+  const box = $("meetlist");
+  if (!meet) { box.innerHTML = `<div class="empty">Loading your meetings…</div>`; return; }
+  $("account").textContent = meet.account || "";
+  if (!meet.configured){ box.innerHTML = `<div class="card signin-box">Calendar sign-in isn't set up in this version of the app.</div>`; return; }
+  if (!meet.account){ box.innerHTML = signInBox(); return; }
+  const now = new Date(), items = meet.items || [];
+  let pick;
+  if (tab === "today") pick = items.filter(m => sameDay(new Date(m.start), now));
+  else if (tab === "upcoming") pick = items.filter(m => new Date(m.start) > now && !sameDay(new Date(m.start), now));
+  else pick = items.filter(m => new Date(m.end) < now).reverse();
+  const calls = pick.filter(m => m.confirmed), other = pick.filter(m => !m.confirmed);
+  let html = "", lastDay = "";
+  for (const m of calls){
+    const d = new Date(m.start).toLocaleDateString([], {weekday: "long", month: "long", day: "numeric"}).toUpperCase();
+    if (d !== lastDay){ html += `<div class="eyebrow group">${esc(d)}</div>`; lastDay = d; }
+    html += meetRow(m);
+  }
+  if (!calls.length) html += `<div class="empty">${tab === "today" ? "No confirmed calls today." : tab === "upcoming" ? "No confirmed calls in the next 7 days." : "No calls in the last 7 days."}</div>`;
+  if (other.length) html += `<details class="other"><summary>Other calendar items (${other.length}) · not calls, the Copilot stays off</summary>${other.map(m => `<div class="o"><span>${tab === "today" ? "" : fmtDate(m.start) + " "}${fmtTime(m.start)}</span><span style="color:var(--body)">${esc(m.title)}</span><span>${esc(where(m))}</span></div>`).join("")}</details>`;
+  if (meet.error) html += `<div class="notice bad" style="margin:0">${esc(meet.error)}</div>`;
+  html += `<div class="tint rules"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#036E84" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M11 12h1v5h1"/></svg><span>The Copilot can be switched on from 10 minutes before a confirmed meeting until 15 minutes after it ends. Confirmed means you accepted it, 2 or more people are invited, and it has a Zoom, Meet, Teams or Webex link.</span></div>
+    <div style="text-align:center"><button class="linkbtn" type="button" onclick="api() && api().sign_out()">Sign out of ${esc(meet.account)}</button></div>`;
+  box.innerHTML = html;
+}
+all("[data-tab]").forEach(b => b.onclick = () => { tab = b.dataset.tab; all("[data-tab]").forEach(x => x.classList.toggle("sel", x === b)); renderMeetings(); });
+
+// -- recordings ---------------------------------------------------------------
+async function loadRecs(){
+  if (!api() || !api().list_recordings) return;
+  recs = await api().list_recordings() || [];
+  const follow = recs.reduce((n, r) => n + (r.starred || 0), 0);
+  $("tr1").textContent = recs.length ? `${recs.length} past call${recs.length > 1 ? "s" : ""}` : "No past calls yet";
+  $("tr2").textContent = follow ? `${follow} follow-up${follow > 1 ? "s" : ""} saved` : "";
+  renderRecs();
+}
+function renderRecs(){
+  const q = $("q").value.trim().toLowerCase();
+  const list = recs.filter(r => !q || [r.title, r.topic, ...(r.attendees || [])].join(" ").toLowerCase().includes(q));
+  const follow = recs.reduce((n, r) => n + (r.starred || 0), 0);
+  let html = follow ? `<div class="followbar" style="margin-bottom:10px"><span style="fill:#C9A227;display:flex">${STAR}</span>${follow} saved follow-up question${follow > 1 ? "s" : ""} waiting to be sent</div>` : "";
+  html += list.map((r, i) => `<button type="button" class="rec ${i === 0 && !q ? "edge" : "card"}" style="width:100%;margin-bottom:10px" onclick="showRec('${esc(r.id)}')">
+      <b class="h">${esc(r.title)}</b><span class="d">${fmtDate(r.started)} · ${esc(r.minutes)} min</span>
+      <span class="s">${esc(r.topic || (r.attendees || []).join(", "))}</span><span class="g">${r.starred ? `${r.starred} SAVED` : ""}</span>
+      <span class="c">${r.cards} cards · ${r.papers} papers</span><span></span></button>`).join("");
+  if (!list.length) html += `<div class="empty"><b>${q ? "No matches" : "No past calls yet"}</b>${q ? "Try another name or topic." : "After each call, its transcript, cards and papers are saved here."}</div>`;
+  $("reclist").innerHTML = html;
+}
+$("q").oninput = renderRecs;
+
+async function showRec(id){
+  const r = api() ? await api().get_recording(id) : null;
+  if (!r) return;
+  openRec = r; go("rec"); renderRec();
+}
+function renderRec(){
+  const r = openRec, st = r.starred || [];
+  const end = new Date(new Date(r.started).getTime() + r.minutes * 60000);
+  const recap = (r.plain || []).filter(p => p.text || p.topic);
+  const saved = (r.cards || []).filter(c => st.includes(c.ask));
+  $("recdetail").innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:4px"><h1 class="h">${esc(r.title)}</h1>
+      <div style="color:var(--muted)">${fmtDate(r.started)} · ${fmtTime(r.started)} – ${fmtTime(end.toISOString())} · ${esc(r.minutes)} min${(r.attendees || []).length ? " · " + esc(r.attendees.join(", ")) : ""}</div></div>
+    ${recap.length ? `<section class="tint recap"><span class="eyebrow" style="color:var(--teal)">In plain words</span><ul>${recap.map(p => `<li><b>${esc(p.topic)}</b>${p.text ? ": " + esc(p.text) : ""} <span style="color:var(--muted)">(${esc(p.at)})</span></li>`).join("")}</ul></section>` : ""}
+    ${saved.length ? `<span class="eyebrow" style="color:var(--gold)">Saved for follow-up (${saved.length})</span>${saved.map(c => `<div class="saved"><div class="h" style="font-size:18px;font-weight:700;line-height:1.4">${esc(c.ask)}</div>${c.paper ? paperLink(c.paper) : ""}</div>`).join("")}` : ""}
+    <span class="eyebrow">All cards (${(r.cards || []).length}) · ${(r.cards || []).filter(c => c.paper).length} papers</span>
+    ${(r.cards || []).map((c, i) => `<div class="cardrow card"><span class="at">${esc(c.at)}</span><span>${esc(c.ask)}</span><button type="button" class="${st.includes(c.ask) ? "starred" : ""}" onclick="starSaved(${i})">${st.includes(c.ask) ? "★ Saved" : "☆ Save"}</button></div>`).join("") || `<div class="note">No cards in this call.</div>`}
+    <details class="tx"><summary>Transcript · ${esc(r.minutes)} min · saved on this computer</summary><div>${esc(txText(r))}</div></details>`;
+}
+const clock = (t) => `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
+const txText = (r) => (r.lines || []).map(l => `${clock(l.t)} ${l.speaker === "Andrew" ? "You" : "Them"}: ${l.text}`).join("\n");
+async function starSaved(i){ const r = await api().star_recording(openRec.id, openRec.cards[i].ask); if (r){ openRec = r; renderRec(); } }
+$("copybtn").onclick = async () => {
+  const r = openRec; if (!r) return;
+  const st = r.starred || [];
+  const text = [r.title + " · " + fmtDate(r.started), "",
+    ...(r.plain || []).filter(p => p.topic || p.text).map(p => `- ${p.topic}${p.text ? ": " + p.text : ""}`), "",
+    st.length ? "Follow-up questions:" : "", ...(r.cards || []).filter(c => st.includes(c.ask)).map(c => `- ${c.ask}${c.paper ? ` (https://pubmed.ncbi.nlm.nih.gov/${c.paper.pmid}/)` : ""}`)].join("\n").trim();
+  try { await navigator.clipboard.writeText(text); }
+  catch { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  $("copybtn").lastChild.textContent = "Copied"; setTimeout(() => $("copybtn").lastChild.textContent = "Copy notes", 1500);
+};
+
+// -- events from the app -------------------------------------------------------
 window.onCopilotEvent = (e) => {
   if (e.type === "status"){
-    if (e.state === "listening"){ setOn(true); if (e.model) $("model").textContent = "Transcribing with " + e.model; render(); }
-    else if (e.state === "loading"){ $("state").textContent = "Starting…"; }
-    else if (e.state === "off"){ setOn(false); render(); $("heard").textContent = ""; document.querySelectorAll(".bars i").forEach(b => b.style.height = "3px"); }
-    else if (e.state === "skipped"){ $("model").textContent = `Skipped ${e.seconds}s of audio to keep up`; }
-    else if (e.state === "saved"){ $("model").textContent = "Transcript saved on this computer"; }
+    if (e.state === "loading"){ $("livelabel").textContent = "STARTING…"; all("[data-state]").forEach(s => s.textContent = "Starting…"); go("live"); }
+    else if (e.state === "listening"){
+      setOn(true); go("live"); render();
+      const m = meet && (meet.items || []).find(x => x.id === meet.active);
+      $("livetitle").textContent = m ? m.title : "Call";
+    }
+    else if (e.state === "off"){
+      setOn(false); cards = []; starred = []; render(); $("plainbox").innerHTML = ""; $("transcript").innerHTML = ""; $("heard").textContent = "";
+      all(".bars i").forEach(b => b.style.height = "3px"); go("home");
+    }
+    else if (e.state === "skipped"){ notice(`Skipped ${e.seconds}s of audio to keep up`); }
+    else if (e.state === "saved"){ notice("Call ended. It's saved in Recordings.", "good"); loadRecs(); }
   } else if (e.type === "line"){
-    $("heard").innerHTML = `Last heard · <b>${esc(e.speaker === "Andrew" ? "You" : "Them")}:</b> ${esc(e.text)}`;
-    const d = document.createElement("div");
-    d.innerHTML = `<span>${esc(e.speaker)}</span> ${esc(e.text)}`; $("transcript").appendChild(d);
+    $("heardwho").textContent = "Last heard · " + (e.speaker === "Andrew" ? "You" : "Them");
+    $("heard").textContent = e.text;
+    const d = document.createElement("div"); d.innerHTML = `<span>${esc(e.speaker === "Andrew" ? "You" : "Them")}</span>${esc(e.text)}`; $("transcript").appendChild(d);
   } else if (e.type === "suggestions"){
-    if (e.in_plain_words) $("plainbox").innerHTML = `<div class="plain"><span class="eyebrow">In plain words · ${esc(e.at)}</span><h2>${esc(e.topic||"")}</h2><p>${esc(e.in_plain_words)}</p></div>`;
-    else if (e.topic) $("plainbox").innerHTML = `<div class="plain"><span class="eyebrow">Now discussing · ${esc(e.at)}</span><h2>${esc(e.topic)}</h2></div>`;
-    const incoming = (e.cards||[]).map(c => Object.assign({at: e.at}, c));
+    if (e.in_plain_words || e.topic) $("plainbox").innerHTML = `<section class="tint plain"><span class="eyebrow">${e.in_plain_words ? "In plain words" : "Now discussing"} · ${esc(e.at)}</span><h2 class="h">${esc(e.topic || "")}</h2>${e.in_plain_words ? `<p>${esc(e.in_plain_words)}</p>` : ""}</section>`;
+    const incoming = (e.cards || []).map(c => Object.assign({at: e.at}, c));
     if (incoming.length) cards = incoming.concat(cards).slice(0, 2);   // Andrew: 2 at a time
     render();
   } else if (e.type === "error" || e.type === "warning"){
-    const n = $("notice"); n.textContent = e.message; n.className = e.type === "error" ? "bad" : ""; n.hidden = false;
+    notice(e.message, e.type === "error" ? "bad" : "");
   } else if (e.type === "ok"){
-    $("notice").hidden = true;
+    notice("");
   } else if (e.type === "version"){
-    $("ver").textContent = "Version " + e.version;
+    const m = /^1\.0\.(\d+)$/.exec(e.version || "");
+    all("[data-ver]").forEach(v => v.textContent = m ? `v1 · build ${m[1]}` : `v1 · ${e.version}`);
   } else if (e.type === "meetings"){
-    renderMeetings(e);
+    meet = e;
+    all("[data-toggle]").forEach(b => b.classList.toggle("nomeet", !e.active && !on));
+    if (on && e.active) $("livetitle").textContent = (e.items.find(m => m.id === e.active) || {}).title || "Call";
+    renderHome(); renderMeetings();
   } else if (e.type === "level"){
     const bars = document.querySelectorAll(`#bars-${e.speaker} i`), h = Math.min(14, 3 + Math.round(e.level * 11));
     bars.forEach((b, i) => b.style.height = Math.max(3, h - [3, 0, 2][i]) + "px");
   }
 };
+window.addEventListener("pywebviewready", loadRecs);
 </script>
 </body>
 </html>

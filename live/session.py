@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # engine lives 
 
 import copilot  # noqa: E402
 import knowledge  # noqa: E402
+import recordings  # noqa: E402
 import numpy as np  # noqa: E402
 from audio import FileSource, MacMicSource, MacSystemSource, WindowsSource  # noqa: E402
 from transcriber import LiveTranscriber  # noqa: E402
@@ -38,9 +39,13 @@ TRANSCRIPTS = Path.home() / "Documents" / "PBD Call Copilot" / "transcripts"
 
 class CallSession:
     def __init__(self, events: Callable[[Dict], None], test_wav: Optional[str] = None,
-                 offline: bool = False, meeting: str = ""):
+                 offline: bool = False, meeting: str = "", meeting_info: Optional[Dict] = None):
         self.events = events
         self.meeting = meeting   # calendar details of the confirmed meeting (title, people, agenda)
+        self.meeting_info = meeting_info or {}
+        self.cards_shown: List[Dict] = []   # everything kept for Recordings
+        self.plain: List[Dict] = []
+        self.starred: List[str] = []
         self.test_wav = test_wav
         self.offline = offline   # self-test without Claude: audio + speech-to-text only
         self.lines: List[Dict] = []
@@ -67,8 +72,17 @@ class CallSession:
             for s in self.sources:
                 s.stop()
             self.sources = []
-        self._save()
+        try:
+            self._save()
+        except Exception as e:   # a full disk must never stop the switch from turning off
+            self.events({"type": "warning", "message": f"Couldn't save this call: {type(e).__name__}"})
         self.events({"type": "status", "state": "off"})
+
+    def star(self, ask: str) -> None:
+        if ask in self.starred:
+            self.starred.remove(ask)
+        else:
+            self.starred.append(ask)
 
     def _check_mac_permission(self) -> None:
         """The other side of the call needs macOS's screen & audio recording permission."""
@@ -228,6 +242,10 @@ class CallSession:
             return
         cards = res.get("cards", [])[:MAX_CARDS]
         self.shown_asks += [c["ask"] for c in cards]
+        at = _clock(new[-1]["t"])
+        self.cards_shown += [{**c, "at": at} for c in cards]
+        if res.get("topic") or res.get("in_plain_words"):
+            self.plain.append({"at": at, "topic": res.get("topic") or "", "text": res.get("in_plain_words", "")})
         self.events({"type": "suggestions", "topic": res.get("topic"),
                      "in_plain_words": res.get("in_plain_words", ""), "cards": cards,
                      "at": _clock(new[-1]["t"])})
@@ -238,7 +256,15 @@ class CallSession:
         TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
         path = TRANSCRIPTS / f"{datetime.now():%Y-%m-%d_%H%M}_call.txt"
         path.write_text(_render(self.lines))
-        self.events({"type": "status", "state": "saved", "path": str(path)})
+        started = datetime.fromtimestamp(self.started)
+        call_id = recordings.save({
+            "id": f"{started:%Y%m%d-%H%M%S}", "title": self.meeting_info.get("title") or "Call",
+            "attendees": self.meeting_info.get("attendees", []), "started": started.isoformat(timespec="seconds"),
+            "minutes": max(1, round((time.time() - self.started) / 60)),
+            "topic": self.plain[-1]["topic"] if self.plain else "",
+            "lines": self.lines, "plain": self.plain, "cards": self.cards_shown, "starred": self.starred,
+        })
+        self.events({"type": "status", "state": "saved", "path": str(path), "recording": call_id})
 
 
 def _clock(t: float) -> str:

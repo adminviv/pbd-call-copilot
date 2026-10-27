@@ -72,6 +72,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 import copilot  # noqa: E402
 import gcal  # noqa: E402
+import recordings  # noqa: E402
 from session import CallSession  # noqa: E402
 
 APP_VERSION = "dev"   # the release build writes the real number here
@@ -90,7 +91,17 @@ class Api:
         self._app.toggle()
 
     def star(self, ask: str):
-        self._app.starred.append(ask)
+        if self._app.session:
+            self._app.session.star(ask)
+
+    def list_recordings(self) -> list:
+        return recordings.list_all()
+
+    def get_recording(self, call_id: str):
+        return recordings.load(call_id)
+
+    def star_recording(self, call_id: str, ask: str):
+        return recordings.toggle_star(call_id, ask)
 
     def sign_in(self) -> dict:
         """Google sign-in (calendar, read-only) in the browser; returns the result for the panel."""
@@ -123,7 +134,6 @@ class CopilotApp:
         self.recorded = []
         self.session = None
         self.window = None
-        self.starred = []
         self.toggle_lock = threading.Lock()
         self.meetings = []            # from the signed-in Google calendar(s)
         self.meetings_lock = threading.Lock()
@@ -181,9 +191,9 @@ class CopilotApp:
             elif not self.test_wav and not self.current_meeting():
                 self.emit({"type": "error", "message": self.why_no_meeting()})
             else:
-                meeting = gcal.meeting_context(self.current_meeting()) if not self.test_wav else ""
+                current = None if self.test_wav else self.current_meeting()
                 self.session = CallSession(self.emit, test_wav=self.test_wav, offline=self.offline,
-                                           meeting=meeting)
+                                           meeting=gcal.meeting_context(current), meeting_info=current)
                 self.session.start()
                 if self.report and not hasattr(self, "first_session_started"):
                     self.first_session_started = self.session.started
@@ -308,7 +318,7 @@ class CopilotApp:
         page = "panel.html" if (copilot.has_key() or self.offline) else "setup.html"   # first launch asks for the key
         self.window = webview.create_window(
             "PBD Call Copilot", str(HERE / "ui" / page), js_api=Api(self),
-            width=760, height=1000, min_size=(480, 600), background_color="#061D28",
+            width=760, height=1000, min_size=(480, 600), background_color="#F3F6FC",
         )
         self.window.events.loaded += self._page_loaded
         webview.start(self.on_loaded)
