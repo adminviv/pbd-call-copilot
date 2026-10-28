@@ -42,6 +42,8 @@ def main(path: str) -> int:
          f"worst {max(lags):.0f} s" if lags else "no lines"),
         ("science words heard correctly", all(w in heard for w in MUST_HEAR),
          ", ".join("missing " + w for w in MUST_HEAR if w not in heard)),
+        ("main speech model (Parakeet) is in use", bool(listening) and "Parakeet" in listening.get("model", ""),
+         listening.get("model", "") if listening else "never listened"),
         ("sound bars get real levels", any(e["type"] == "level" and e["level"] > 0.1 for e in run), ""),
         ("secure connections work (Google, Europe PMC, NCBI) and sign-in client is bundled",
          bool(netcheck) and all(netcheck[0].get(k) for k in ("google", "europepmc", "ncbi", "calendar_client")),

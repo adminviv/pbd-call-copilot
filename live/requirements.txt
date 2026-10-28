@@ -1,6 +1,7 @@
 # PBD Call Copilot (Windows and Mac). Python 3.11.
 anthropic>=0.102
-faster-whisper>=1.2
+faster-whisper>=1.2     # backup speech model
+sherpa-onnx>=1.12       # runs Parakeet, the main speech model
 numpy
 soundcard        # mic on both; speaker loopback on Windows (Mac uses mac/pbd-syscap)
 pywebview>=5     # the panel window (Edge WebView2 on Windows, WebKit on Mac)
