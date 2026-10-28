@@ -40,11 +40,6 @@ jobs:
         env:
           GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
-      - name: Add the PBD knowledge base (private; optional)
-        shell: bash
-        env:
-          PBD_KNOWLEDGE_GZ_B64: ${{ secrets.PBD_KNOWLEDGE_GZ_B64 }}
-        run: if [ -n "$PBD_KNOWLEDGE_GZ_B64" ]; then printf '%s' "$PBD_KNOWLEDGE_GZ_B64" | base64 -d | gunzip > live/bundle/knowledge.md && wc -w live/bundle/knowledge.md; else echo "::warning::PBD_KNOWLEDGE_GZ_B64 not set - the app will only know the short built-in description of PBD"; fi
       - name: Build the app
         run: >
           pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
@@ -137,10 +132,6 @@ jobs:
         env:
           GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
-      - name: Add the PBD knowledge base (private; optional)
-        env:
-          PBD_KNOWLEDGE_GZ_B64: ${{ secrets.PBD_KNOWLEDGE_GZ_B64 }}
-        run: if [ -n "$PBD_KNOWLEDGE_GZ_B64" ]; then printf '%s' "$PBD_KNOWLEDGE_GZ_B64" | base64 -d | gunzip > live/bundle/knowledge.md && wc -w live/bundle/knowledge.md; else echo "::warning::PBD_KNOWLEDGE_GZ_B64 not set - the app will only know the short built-in description of PBD"; fi
       - name: Build the system-audio helper (ScreenCaptureKit)
         run: swiftc -O -target ${{ matrix.arch }}-apple-macos13.0 -o live/mac/pbd-syscap live/mac/syscap.swift
       - name: Build the app
