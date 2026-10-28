@@ -43,6 +43,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .notice{margin:14px 24px 0;padding:12px 16px;font-size:14px;line-height:1.45;background:linear-gradient(100deg,#FBF0C8 0%,#FFF9E6 100%);border:1px solid #EAD48A;color:#5C4500}
 .notice.bad{background:linear-gradient(100deg,#FBE3E0 0%,#FFF5F3 100%);border-color:#EBB3AC;color:var(--bad)}
 .notice.good{background:var(--tint);border-color:#B9DDE3;color:#0D4F5C}
+/* update */
+.updatebar{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--tint);border:1px solid #B9DDE3;font-size:15px;color:#0D4F5C}
+.updatebar .primary{height:40px;font-size:15px;padding:0 18px;margin-left:auto;white-space:nowrap;flex-shrink:0}
 /* home */
 .hero{position:relative;padding:20px 24px 92px;background:radial-gradient(420px 260px at 90% 5%,rgba(27,177,187,.28),transparent 70%),radial-gradient(380px 240px at 0% 100%,rgba(134,162,223,.30),transparent 70%),linear-gradient(125deg,#E8EFFD 0%,#E4F4F7 60%,#D4EFF2 100%)}
 .hero svg.waves{position:absolute;left:0;top:0;width:100%;height:100%;opacity:.35;pointer-events:none}
@@ -179,6 +182,11 @@ details.tx div{padding:0 18px 14px;font-size:14px;line-height:1.6;color:var(--bo
     <div class="homebody">
       <div id="homecard"></div>
       <div class="notice" data-notice hidden></div>
+      <div class="updatebar" id="updatebar" hidden>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#036E84" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        <span id="updatetext">A new version of Call Copilot is ready.</span>
+        <button class="primary" type="button" id="updatebtn">Update</button>
+      </div>
       <div class="tiles">
         <button class="tile card m" type="button" onclick="go('meetings')">
           <span class="top"><span class="badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6378" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
@@ -437,6 +445,7 @@ function renderRecs(){
   $("reclist").innerHTML = html;
 }
 $("q").oninput = renderRecs;
+$("updatebtn").onclick = () => api() && api().update();
 
 async function showRec(id){
   const r = api() ? await api().get_recording(id) : null;
@@ -500,8 +509,15 @@ window.onCopilotEvent = (e) => {
   } else if (e.type === "ok"){
     notice("");
   } else if (e.type === "version"){
-    const m = /^1\.0\.(\d+)$/.exec(e.version || "");
-    all("[data-ver]").forEach(v => v.textContent = m ? `v1 · build ${m[1]}` : `v1 · ${e.version}`);
+    all("[data-ver]").forEach(v => v.textContent = "v1");   // the exact build stays in the app log
+  } else if (e.type === "update"){
+    $("updatebar").hidden = false;
+    $("updatetext").textContent = `A new version of Call Copilot is ready (about ${e.size_mb} MB). It replaces this one; your recordings and sign-in stay.`;
+  } else if (e.type === "update_status"){
+    const b = $("updatebtn");
+    if (e.state === "downloading"){ b.disabled = true; b.textContent = `Downloading… ${e.pct}%`; }
+    else if (e.state === "installing"){ b.disabled = true; b.textContent = "Installing…"; $("updatetext").textContent = "Installing the new version. The app will close and reopen by itself."; }
+    else { b.disabled = false; b.textContent = "Update"; notice(e.message, e.state === "failed" ? "bad" : ""); }
   } else if (e.type === "meetings"){
     meet = e;
     all("[data-toggle]").forEach(b => b.classList.toggle("nomeet", !e.active && !on));

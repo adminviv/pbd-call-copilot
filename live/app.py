@@ -73,6 +73,7 @@ sys.path.insert(0, str(HERE.parent))
 import copilot  # noqa: E402
 import gcal  # noqa: E402
 import recordings  # noqa: E402
+import updater  # noqa: E402
 from session import CallSession  # noqa: E402
 
 APP_VERSION = "dev"   # the release build writes the real number here
@@ -102,6 +103,9 @@ class Api:
 
     def star_recording(self, call_id: str, ask: str):
         return recordings.toggle_star(call_id, ask)
+
+    def update(self) -> None:
+        threading.Thread(target=self._app.run_update, name="update", daemon=True).start()
 
     def sign_in(self) -> dict:
         """Google sign-in (calendar, read-only) in the browser; returns the result for the panel."""
@@ -229,6 +233,47 @@ class CopilotApp:
             self.toggle()   # the confirmed meeting's window closed: stop listening
             self.emit({"type": "warning", "message": "The meeting has ended, so the Copilot switched off."})
 
+    # -- updates: "Update available" on Home, one click to install -----------
+    def watch_updates(self) -> None:
+        while True:
+            try:
+                found = updater.check(APP_VERSION)
+                if found:
+                    log.info("update available: %s -> %s", APP_VERSION, found["version"])
+                    self.pending_update = found
+                    self.emit({"type": "update", "size_mb": round(found["size"] / 1048576)})
+            except Exception:
+                log.exception("update check failed")   # offline etc.: try again later
+            time.sleep(6 * 3600)
+
+    def run_update(self) -> None:
+        found = getattr(self, "pending_update", None)
+        if not found:
+            return
+        if self.session and self.session.running:
+            self.emit({"type": "update_status", "state": "busy",
+                       "message": "Switch the Copilot off first; the update can install after your call."})
+            return
+        try:
+            last = [-1]
+
+            def progress(f: float) -> None:
+                pct = int(f * 100)
+                if pct != last[0]:
+                    last[0] = pct
+                    self.emit({"type": "update_status", "state": "downloading", "pct": pct})
+            package = updater.download(found, progress)
+            self.emit({"type": "update_status", "state": "installing"})
+            log.info("installing update %s", found["version"])
+            updater.install_and_restart(package)
+        except Exception as e:
+            log.exception("update failed")
+            self.emit({"type": "update_status", "state": "failed",
+                       "message": f"The update didn't finish ({type(e).__name__}). Your current version still works; try again later."})
+            return
+        time.sleep(1)
+        os._exit(0)   # the hand-over script waits for this, then installs and reopens the app
+
     def watch_calendar(self) -> None:
         while True:
             self.refresh_meetings()
@@ -268,7 +313,9 @@ class CopilotApp:
         for step in (self.hide_from_screen_share,
                      lambda: threading.Thread(target=self.hotkey, name="hotkey", daemon=True).start(),
                      lambda: None if self.test_wav else
-                     threading.Thread(target=self.watch_calendar, name="calendar", daemon=True).start()):
+                     threading.Thread(target=self.watch_calendar, name="calendar", daemon=True).start(),
+                     lambda: None if (self.test_wav or self.report) else
+                     threading.Thread(target=self.watch_updates, name="updates", daemon=True).start()):
             try:
                 step()
             except Exception:
