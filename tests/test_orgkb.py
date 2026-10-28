@@ -21,7 +21,7 @@ Talked about models.
 Peroxisome = a small cell part that breaks down certain fats.
 """
 f = Path(tempfile.mkdtemp()) / "knowledge.md"
-f.write_text(KB)
+f.write_text(KB, encoding="utf-8")
 os.environ["COPILOT_KNOWLEDGE"] = str(f)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import orgkb  # noqa: E402

@@ -17,5 +17,6 @@ live/mac/pbd-syscap
 google_client.json
 live/bundle/google_client.json
 live/bundle/knowledge.md
+live/bundle/knowledge.enc
 live/bundle/corrections.json
 google_token.json

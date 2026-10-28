@@ -1,7 +1,8 @@
 """PBD's own knowledge base: who PBD is, its people and affiliates, a plain-words glossary.
 
-Private: it lives in ~/.pbd-copilot/knowledge.md (or is bundled into the app at build
-time), never in this repository. Built from Drive, Otter, the WhatsApp export, Gmail
+Private: never in this repository. The app download carries it locked (knowledge.enc,
+see kbcrypt.py) and unlocks it with the PBD key on this computer; on a PBD computer it
+can also be a plain ~/.pbd-copilot/knowledge.md. Built from Drive, Otter, the WhatsApp export, Gmail
 and Asana, and reviewed by the PBD team.
 
 Two parts are used on a call:
@@ -12,34 +13,52 @@ Two parts are used on a call:
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 PEOPLE = "## People and organizations"
 MAX_ENTRIES = 8
 
 
-def _path() -> Optional[Path]:
+def _pbd_key() -> str:
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    env = Path.home() / ".pbd.env"
+    if not key and env.exists():
+        for line in env.read_text().splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() == "ANTHROPIC_API_KEY":
+                key = value.strip().strip('"')
+    return key
+
+
+def _read() -> str:
+    """Override file, else the locked copy inside the app, else the plain copy on this computer."""
     env = os.environ.get("COPILOT_KNOWLEDGE")
+    if env and Path(env).exists():
+        return Path(env).read_text(encoding="utf-8")
     bundled = getattr(sys, "_MEIPASS", None)
-    for p in ([Path(env)] if env else []) + ([Path(bundled) / "knowledge.md"] if bundled else []) + \
-             [Path.home() / ".pbd-copilot" / "knowledge.md"]:
-        if p.exists():
-            return p
-    return None
+    locked = Path(bundled) / "knowledge.enc" if bundled else None
+    if locked and locked.exists():
+        try:
+            import kbcrypt
+            return kbcrypt.unlock(locked.read_bytes(), _pbd_key())
+        except Exception as e:   # no key yet / different key: work without it, but say so in the log
+            logging.getLogger("copilot").warning("knowledge base not unlocked: %s", e)
+    plain = Path.home() / ".pbd-copilot" / "knowledge.md"
+    return plain.read_text(encoding="utf-8") if plain.exists() else ""
 
 
 @lru_cache(maxsize=1)
 def _load() -> Tuple[str, List[Tuple[str, List[str], str]]]:
     """(base text, [(name, names to match, entry text)])"""
-    p = _path()
-    if not p:
+    text = _read()
+    if not text:
         return "", []
-    text = p.read_text(encoding="utf-8")
     start = text.find(PEOPLE)
     if start < 0:
         return text, []

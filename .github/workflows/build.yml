@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: sed -i.bak 's/^APP_VERSION = "dev"/APP_VERSION = "1.0.${{ github.run_number }}"/' live/app.py && grep -n "^APP_VERSION" live/app.py
       - name: Check the confirmed-meeting rule
-        run: python tests/test_gcal.py && python tests/test_recordings.py && python tests/test_corrections.py && python tests/test_orgkb.py
+        run: python tests/test_gcal.py && python tests/test_recordings.py && python tests/test_corrections.py && python tests/test_orgkb.py && python tests/test_kbcrypt.py
       - name: Download the speech model
         shell: bash
         run: ./.github/get-model.sh
@@ -40,6 +40,11 @@ jobs:
         env:
           GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
+      - name: Add the PBD knowledge base (locked with the PBD key; optional)
+        shell: bash
+        env:
+          PBD_KNOWLEDGE_LOCKED: ${{ secrets.PBD_KNOWLEDGE_LOCKED }}
+        run: if [ -n "$PBD_KNOWLEDGE_LOCKED" ]; then printf '%s' "$PBD_KNOWLEDGE_LOCKED" | base64 -d > live/bundle/knowledge.enc && head -c 6 live/bundle/knowledge.enc | grep -q PBDKB1 && echo "locked knowledge base added"; else echo "::warning::PBD_KNOWLEDGE_LOCKED not set - the app will only know the short built-in description of PBD"; fi
       - name: Build the app
         run: >
           pyinstaller --noconfirm --windowed --name "PBD Call Copilot"
@@ -47,7 +52,7 @@ jobs:
           --icon brand/app-icon.ico
           --add-data "live/ui;ui"
           --add-data "live/bundle;."
-          --hidden-import net --hidden-import recordings --hidden-import corrections --hidden-import orgkb --hidden-import updater --collect-data certifi
+          --hidden-import net --hidden-import recordings --hidden-import corrections --hidden-import orgkb --hidden-import kbcrypt --hidden-import updater --collect-data certifi
           --add-data "models;models"
           --collect-all faster_whisper --collect-all ctranslate2 --collect-all sherpa_onnx
           --collect-all webview --collect-all soundcard
@@ -125,13 +130,17 @@ jobs:
         shell: bash
         run: sed -i.bak 's/^APP_VERSION = "dev"/APP_VERSION = "1.0.${{ github.run_number }}"/' live/app.py && grep -n "^APP_VERSION" live/app.py
       - name: Check the confirmed-meeting rule
-        run: python tests/test_gcal.py && python tests/test_recordings.py && python tests/test_corrections.py && python tests/test_orgkb.py
+        run: python tests/test_gcal.py && python tests/test_recordings.py && python tests/test_corrections.py && python tests/test_orgkb.py && python tests/test_kbcrypt.py
       - name: Download the speech model
         run: ./.github/get-model.sh
       - name: Add the Google sign-in client (calendar, read-only)
         env:
           GOOGLE_CLIENT_JSON: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: if [ -z "$GOOGLE_CLIENT_JSON" ]; then echo "::error::GOOGLE_CLIENT_JSON secret is missing - without it the app cannot sign in to Google Calendar, so it cannot start"; exit 1; fi; printf '%s' "$GOOGLE_CLIENT_JSON" > live/bundle/google_client.json
+      - name: Add the PBD knowledge base (locked with the PBD key; optional)
+        env:
+          PBD_KNOWLEDGE_LOCKED: ${{ secrets.PBD_KNOWLEDGE_LOCKED }}
+        run: if [ -n "$PBD_KNOWLEDGE_LOCKED" ]; then printf '%s' "$PBD_KNOWLEDGE_LOCKED" | base64 -d > live/bundle/knowledge.enc && head -c 6 live/bundle/knowledge.enc | grep -q PBDKB1 && echo "locked knowledge base added"; else echo "::warning::PBD_KNOWLEDGE_LOCKED not set - the app will only know the short built-in description of PBD"; fi
       - name: Build the system-audio helper (ScreenCaptureKit)
         run: swiftc -O -target ${{ matrix.arch }}-apple-macos13.0 -o live/mac/pbd-syscap live/mac/syscap.swift
       - name: Build the app
@@ -142,7 +151,7 @@ jobs:
           --paths . --paths live
           --add-data "live/ui:ui"
           --add-data "live/bundle:."
-          --hidden-import net --hidden-import recordings --hidden-import corrections --hidden-import orgkb --hidden-import updater --collect-data certifi
+          --hidden-import net --hidden-import recordings --hidden-import corrections --hidden-import orgkb --hidden-import kbcrypt --hidden-import updater --collect-data certifi
           --add-data "models:models"
           --add-binary "live/mac/pbd-syscap:mac"
           --collect-all faster_whisper --collect-all ctranslate2 --collect-all sherpa_onnx
