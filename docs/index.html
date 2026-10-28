@@ -84,6 +84,24 @@
 </div>
 
 <main class="wrap">
+  <section class="pane-win" id="update">
+    <h2>Already have the app? Update it</h2>
+    <ol class="steps">
+      <li><div>Easiest: open PBD Call Copilot. When a new version is ready, its Home screen shows <strong>Update</strong>. Click it; the app updates and reopens by itself.</div></li>
+      <li><div>Or update from here: <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Setup.exe">Update for Windows</a></div></li>
+      <li><div>Close the app, then open the downloaded <strong>PBD-Call-Copilot-Setup.exe</strong> and click <strong>Install</strong>. It replaces your current version in the same place, so there is never a second copy. Your recordings and Google sign-in stay.</div></li>
+    </ol>
+  </section>
+
+  <section class="pane-mac" id="update-mac" hidden>
+    <h2>Already have the app? Update it</h2>
+    <ol class="steps">
+      <li><div>Easiest: open PBD Call Copilot. When a new version is ready, its Home screen shows <strong>Update</strong>. Click it; the app updates and reopens by itself.</div></li>
+      <li><div>Or update from here: <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Mac-AppleSilicon.zip">Update for Apple chip</a> <a class="btn" href="https://github.com/adminviv/pbd-call-copilot/releases/latest/download/PBD-Call-Copilot-Mac-Intel.zip">Update for Intel chip</a></div></li>
+      <li><div>Quit the app, double-click the downloaded zip, and drag <strong>PBD Call Copilot</strong> into <strong>Applications</strong>. When asked, choose <strong>Replace</strong>, so there is never a second copy. Your recordings and Google sign-in stay.</div></li>
+    </ol>
+  </section>
+
   <section class="pane-win">
     <h2>Set up on Windows (one time, about 5 minutes)</h2>
     <ol class="steps">
@@ -124,7 +142,7 @@
       const on = k === os;
       document.getElementById("tab-" + k).setAttribute("aria-selected", String(on));
       document.getElementById("pane-" + k).hidden = !on;
-      document.querySelector(".pane-" + k).hidden = !on;
+      document.querySelectorAll(".pane-" + k).forEach(s => s.hidden = !on);
     }
     try { localStorage.setItem("os", os); } catch (e) {}
   }
