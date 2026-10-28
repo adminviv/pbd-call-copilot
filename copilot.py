@@ -20,6 +20,7 @@ from typing import Dict, List
 import anthropic
 
 import knowledge
+import orgkb
 import verify
 
 MODEL = "claude-opus-5"
@@ -86,7 +87,8 @@ def private_profile() -> str:
     return PROFILE.read_text() if PROFILE.exists() else ""
 
 
-CONTEXT = """You support the CEO of PBD Project during live calls with researchers. On these calls he
+CONTEXT = """You support the CEO of PBD Project during live calls with researchers, funders, partners and
+board members. On these calls he
 speaks on behalf of PBD Project - he is not just asking science questions, he is representing the
 organization.
 
@@ -123,7 +125,12 @@ Hard rules for anything he might say out loud:
 - Don't make him assert statistics or findings as fact unless the cited passage states them.
 
 Private briefing (names, family context, PBD's topics of interest):
-""" + private_profile()
+""" + private_profile() + ("""
+
+PBD knowledge base (background about PBD, its people and a plain-words glossary). Use it to judge
+what something means for PBD and to explain terms the same way PBD does. Anything listed as
+UNCONFIRMED or under "Not yet confirmed" is uncertain: never put it in words Andrew would say.
+""" + orgkb.base() if orgkb.base() else "")
 
 # running cost tally (claude-opus-5: $5 / $25 per million input / output tokens)
 USAGE = {"calls": 0, "input_tokens": 0, "output_tokens": 0}
@@ -138,7 +145,7 @@ def _call(system: str, user: str, schema: dict, effort: str) -> dict:
     resp = get_client().messages.create(
         model=MODEL,
         max_tokens=4000,
-        system=system,
+        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user}],
         thinking={"type": "adaptive"},
         extra_headers={"anthropic-beta": "server-side-fallback-2026-07-01"},
@@ -297,7 +304,7 @@ CHECK_SCHEMA = {
 }
 
 
-def check_claims(window_text: str, cards: List[Dict], by_id: Dict[str, Dict]) -> List[Dict]:
+def check_claims(window_text: str, cards: List[Dict], by_id: Dict[str, Dict], notes: str = "") -> List[Dict]:
     """Second opinion on each card: are its factual claims backed, and does it follow the rules?"""
     if not cards:
         return []
@@ -310,9 +317,11 @@ def check_claims(window_text: str, cards: List[Dict], by_id: Dict[str, Dict]) ->
                       f"connection: {c['connection']}\ncited passage:\n{passage}")
     verdicts = _call(
         CONTEXT,
+        (f"PBD's notes on people in this call (count as a source):\n{notes}\n\n" if notes else "") +
         f"Call transcript (latest stretch):\n{window_text}\n\n" + "\n\n".join(blocks) +
         "\n\nYou are the fact-checker. For each card, mark supported=false if ANY of these hold: a "
-        "factual claim in 'ask' or 'why' is not stated in its cited passage and was not said on the call; "
+        "factual claim in 'ask' or 'why' is not stated in its cited passage, PBD's notes or knowledge base, "
+        "and was not said on the call; a claim relies on something marked UNCONFIRMED; "
         "the cited passage is about something else; the 'ask' commits PBD money or resources or claims "
         "PBD has something; the 'ask' mentions the CEO's family; a 'connection' names someone "
         "not in the transcript or passage; the 'ask' uses scientist jargon a college graduate wouldn't "
@@ -346,6 +355,9 @@ def _unsourced_numbers(text: str, sources: str) -> List[str]:
 
 
 def suggest(window_text: str, recent_text: str, already_shown: List[str], meeting: str = "") -> Dict:
+    notes = orgkb.for_call(meeting, recent_text[-6000:] + "\n" + window_text)
+    if notes:   # what PBD knows about the people in this meeting / named so far
+        meeting = (meeting + "\n" if meeting else "") + "PBD's notes on people and organizations in this call:\n" + notes
     topic = find_topic(window_text, recent_text, meeting)
     plain = topic.get("in_plain_words", "")
     if _unsourced_numbers(plain, window_text + "\n" + recent_text):
@@ -357,13 +369,13 @@ def suggest(window_text: str, recent_text: str, already_shown: List[str], meetin
     result["papers_found"] = len(papers)
     by_id = {p["pmcid"]: p for p in papers}
     drafted = write_cards(window_text, topic["topic"], papers, already_shown, meeting)
-    failed = {v["index"]: v["problem"] for v in check_claims(window_text, drafted, by_id) if not v["supported"]}
+    failed = {v["index"]: v["problem"] for v in check_claims(window_text, drafted, by_id, notes) if not v["supported"]}
     for i, card in enumerate(drafted):
         if i in failed:
             result["dropped"].append({"card": card, "reason": "claim check: " + failed[i]})
             continue
         cited = by_id.get(card["pmcid"], {}).get("text", "") if card["pmcid"] else ""
-        stray = _unsourced_numbers(card["ask"] + " " + card["why"], window_text + "\n" + cited)
+        stray = _unsourced_numbers(card["ask"] + " " + card["why"], window_text + "\n" + cited + "\n" + notes)
         if stray:
             result["dropped"].append({"card": card, "reason": "number not in call or paper: " + ", ".join(stray)})
             continue
